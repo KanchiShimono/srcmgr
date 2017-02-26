@@ -17,6 +17,7 @@ func srcmgr() *cli.App {
 	app.Name = "srcmgr"
 	app.Usage = "CVS repository manager"
 	app.Version = Version
+	app.Commands = Commands
 	app.Author = "KanchiShimono"
 	app.Email = "shimono-kanchi-yc@ynu.jp"
 	return app
