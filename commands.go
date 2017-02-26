@@ -54,9 +54,14 @@ func List(c *cli.Context) error {
 		}
 
 		existVCSDir := false
-		_, err = os.Stat(filepath.Join(path, ".git"))
-		if err == nil {
-			existVCSDir = true
+		var VCSDIR = []string{".git", ".hg", ".svn"}
+
+		for _, vcs := range VCSDIR {
+			_, err = os.Stat(filepath.Join(path, vcs))
+			if err == nil {
+				existVCSDir = true
+				break
+			}
 		}
 
 		if !existVCSDir {
