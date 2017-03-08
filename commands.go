@@ -144,11 +144,7 @@ func List(c *cli.Context) error {
 		}
 
 		repo, err := LocalRepositoryPath(path)
-		if err != nil {
-			return nil
-		}
-
-		if repo == nil {
+		if err != nil || repo == nil {
 			return nil
 		}
 
