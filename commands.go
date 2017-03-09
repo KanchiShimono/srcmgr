@@ -71,8 +71,8 @@ func Get(c *cli.Context) error {
 	}
 
 	if _, err := os.Stat(dest); err != nil {
-		if err := os.Mkdir(dest, 0755); err != nil {
-			fmt.Println(err.Error())
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			fmt.Println(err)
 			return err
 		}
 		fmt.Printf("mkdir: created directory '%v'\n", dest)
