@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/KanchiShimono/srcmgr/util"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 )
@@ -37,17 +37,14 @@ var commandList = cli.Command{
 func Get(c *cli.Context) error {
 	// Chech to have git command
 	if err := exec.Command("which", "git").Run(); err != nil {
-		fmt.Println("You don't have git command")
-		return err
+		return util.ShowExistError("You don't have git command", err)
 	}
 
 	remoteRepo := c.Args().Get(0)
 
 	// Check URL format
 	if isValid := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`).Match([]byte(remoteRepo)); !isValid {
-		err := errors.New("Invalid github.com URL")
-		fmt.Println(err)
-		return err
+		return util.ShowNewError("Invalid github.com URL")
 	}
 
 	// Format username/reponame
@@ -59,8 +56,7 @@ func Get(c *cli.Context) error {
 	if hasUserName := regexp.MustCompile(`/`).Match([]byte(uri)); !hasUserName {
 		user, err := exec.Command("git", "config", "--get", "user.name").Output()
 		if err != nil {
-			fmt.Println("Git user name has not been set")
-			return err
+			return util.ShowExistError("Git user name has not been set", err)
 		}
 		uri = strings.TrimSpace(string(user)) + "/" + uri
 	}
@@ -76,8 +72,7 @@ func Get(c *cli.Context) error {
 
 	if _, err := os.Stat(dest); err != nil {
 		if err := os.MkdirAll(dest, 0755); err != nil {
-			fmt.Println(err)
-			return err
+			return util.ShowExistError(err.Error(), err)
 		}
 		fmt.Printf("mkdir: created directory '%v'\n", dest)
 	}
@@ -101,17 +96,14 @@ func Get(c *cli.Context) error {
 	}
 
 	if err := os.MkdirAll(dest, 0755); err != nil {
-		fmt.Println(err)
-		return err
+		return util.ShowExistError(err.Error(), err)
 	}
 
 	fmt.Printf("Cloning into '%v'...\n", dest)
 	if err := exec.Command("git", "clone", "https://github.com/"+uri+".git", dest).Run(); err == nil {
 		return nil
 	} else {
-		err := errors.New("Can not clone")
-		fmt.Println(err)
-		return err
+		return util.ShowExistError("Can not clone", err)
 	}
 
 }
@@ -122,9 +114,7 @@ func List(c *cli.Context) error {
 	srcRoot := os.Getenv("GOPATH")
 
 	if srcRoot == "" {
-		err := errors.New("GOPATH is not found")
-		fmt.Println(err)
-		return err
+		return util.ShowNewError("GOPATH is not found")
 	}
 
 	srcRoot = filepath.Join(srcRoot, "src")
