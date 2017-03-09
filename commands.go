@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 )
 
@@ -64,7 +65,7 @@ func Get(c *cli.Context) error {
 	reponame := strings.Split(uri, "/")[1]
 
 	srcRoot := os.Getenv("GOPATH")
-	dest := strings.TrimSpace(c.Args().Get(1))
+	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
 	if dest == "" {
 		dest = filepath.Join(srcRoot, "src/github.com", username)
 	}
