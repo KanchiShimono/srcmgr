@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 )
 
@@ -36,14 +37,17 @@ var commandList = cli.Command{
 func Get(c *cli.Context) error {
 	// Chech to have git command
 	if err := exec.Command("which", "git").Run(); err != nil {
-		return errors.New("You don't have git comand")
+		fmt.Println("You don't have git command")
+		return err
 	}
 
 	remoteRepo := c.Args().Get(0)
 
 	// Check URL format
 	if isValid := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`).Match([]byte(remoteRepo)); !isValid {
-		return errors.New("Invalid github.com URL")
+		err := errors.New("Invalid github.com URL")
+		fmt.Println(err)
+		return err
 	}
 
 	// Format username/reponame
@@ -55,7 +59,8 @@ func Get(c *cli.Context) error {
 	if hasUserName := regexp.MustCompile(`/`).Match([]byte(uri)); !hasUserName {
 		user, err := exec.Command("git", "config", "--get", "user.name").Output()
 		if err != nil {
-			return errors.New("Git user name has not been set")
+			fmt.Println("Git user name has not been set")
+			return err
 		}
 		uri = strings.TrimSpace(string(user)) + "/" + uri
 	}
@@ -64,14 +69,14 @@ func Get(c *cli.Context) error {
 	reponame := strings.Split(uri, "/")[1]
 
 	srcRoot := os.Getenv("GOPATH")
-	dest := strings.TrimSpace(c.Args().Get(1))
+	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
 	if dest == "" {
 		dest = filepath.Join(srcRoot, "src/github.com", username)
 	}
 
 	if _, err := os.Stat(dest); err != nil {
-		if err := os.Mkdir(dest, 0755); err != nil {
-			fmt.Println(err.Error())
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			fmt.Println(err)
 			return err
 		}
 		fmt.Printf("mkdir: created directory '%v'\n", dest)
@@ -96,7 +101,7 @@ func Get(c *cli.Context) error {
 	}
 
 	if err := os.MkdirAll(dest, 0755); err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(err)
 		return err
 	}
 
@@ -104,7 +109,9 @@ func Get(c *cli.Context) error {
 	if err := exec.Command("git", "clone", "https://github.com/"+uri+".git", dest).Run(); err == nil {
 		return nil
 	} else {
-		return errors.New("Can not clone")
+		err := errors.New("Can not clone")
+		fmt.Println(err)
+		return err
 	}
 
 }
@@ -116,6 +123,7 @@ func List(c *cli.Context) error {
 
 	if srcRoot == "" {
 		err := errors.New("GOPATH is not found")
+		fmt.Println(err)
 		return err
 	}
 
