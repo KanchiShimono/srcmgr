@@ -14,7 +14,7 @@ type LocalRepository struct {
 	PathParts []string
 }
 
-func LocalRepositoryPath(fullPath string) (*LocalRepository, error) {
+func LocalRepositoryPath(fullPath string) (path *LocalRepository, err error) {
 	srcRoot := localRepositoryRoot()
 
 	relPath, err := filepath.Rel(srcRoot, fullPath)
@@ -28,24 +28,29 @@ func LocalRepositoryPath(fullPath string) (*LocalRepository, error) {
 
 	pathParts := strings.Split(relPath, string(filepath.Separator))
 
-	return &LocalRepository{fullPath, relPath, pathParts}, nil
+	path = &LocalRepository{
+		FullPath:  fullPath,
+		RelPath:   relPath,
+		PathParts: pathParts,
+	}
+
+	return path, nil
 }
 
-func localRepositoryRoots() []string {
-	var _localRepositoryRoots []string
+func localRepositoryRoots() (roots []string) {
 
 	srcRoot := os.Getenv("GOPATH")
 	if srcRoot != "" {
 		srcRoot = filepath.Join(srcRoot, "src")
-		_localRepositoryRoots = filepath.SplitList(srcRoot)
+		roots = filepath.SplitList(srcRoot)
 	} else {
 		err := errors.New("GOPATH in not difined")
 		panic(err)
 	}
 
-	return _localRepositoryRoots
+	return roots
 }
 
-func localRepositoryRoot() string {
+func localRepositoryRoot() (root string) {
 	return localRepositoryRoots()[0]
 }
