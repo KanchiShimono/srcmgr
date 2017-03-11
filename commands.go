@@ -91,7 +91,7 @@ func Get(c *cli.Context) error {
 		case "n", "N", "no", "No", "NO":
 			return nil
 		default:
-			fmt.Printf("Invalid input %v\n", ans)
+			return util.ShowNewError("Invalid input")
 		}
 	}
 
