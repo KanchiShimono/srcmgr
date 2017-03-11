@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/KanchiShimono/srcmgr/util"
@@ -40,31 +39,25 @@ func Get(c *cli.Context) error {
 		return util.ShowExistError("You don't have git command", err)
 	}
 
-	remoteRepo := c.Args().Get(0)
+	remoteRepo, err := NewRemoteRepository(c.Args().Get(0))
+	if err != nil {
+		return util.ShowExistError(err.Error(), err)
+	}
 
 	// Check URL format
-	if isValid := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`).Match([]byte(remoteRepo)); !isValid {
+	if !remoteRepo.IsValid() {
 		return util.ShowNewError("Invalid github.com URL")
 	}
 
 	// Format username/reponame
-	repl1 := regexp.MustCompile(`^(((https?|git):\/\/)?github\.com\/)?`)
-	repl2 := regexp.MustCompile(`\.git$`)
-	uri := repl1.ReplaceAllString(remoteRepo, "")
-	uri = repl2.ReplaceAllString(uri, "")
-	// if uri has reponame only
-	if hasUserName := regexp.MustCompile(`/`).Match([]byte(uri)); !hasUserName {
-		user, err := exec.Command("git", "config", "--get", "user.name").Output()
-		if err != nil {
-			return util.ShowExistError("Git user name has not been set", err)
-		}
-		uri = strings.TrimSpace(string(user)) + "/" + uri
-	}
-
-	username := strings.Split(uri, "/")[0]
-	reponame := strings.Split(uri, "/")[1]
+	names := remoteRepo.Format4UsrRepoNames()
+	username, reponame := remoteRepo.UsrRepoNameFrom(names)
 
 	srcRoot := os.Getenv("GOPATH")
+	if srcRoot == "" {
+		return util.ShowNewError("GOPATH is not found")
+	}
+
 	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
 	if dest == "" {
 		dest = filepath.Join(srcRoot, "src/github.com", username)
@@ -100,7 +93,7 @@ func Get(c *cli.Context) error {
 	}
 
 	fmt.Printf("Cloning into '%v'...\n", dest)
-	if err := exec.Command("git", "clone", "https://github.com/"+uri+".git", dest).Run(); err == nil {
+	if err := exec.Command("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest).Run(); err == nil {
 		return nil
 	} else {
 		return util.ShowExistError("Can not clone", err)
