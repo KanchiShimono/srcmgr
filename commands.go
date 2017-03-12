@@ -59,18 +59,15 @@ func Get(c *cli.Context) error {
 	}
 
 	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
+	destArgExist := true
 	if dest == "" {
-		dest = filepath.Join(srcRoot, "src/github.com", username)
+		dest = filepath.Join(srcRoot, remoteRepo.URL().Hostname(), username)
+		destArgExist = false
 	}
 
-	if _, err := os.Stat(dest); err != nil {
-		if err := os.MkdirAll(dest, 0755); err != nil {
-			return util.ShowExistError(err.Error(), err)
-		}
-		fmt.Printf("mkdir: created directory '%v'\n", dest)
+	if !destArgExist {
+		dest = filepath.Join(dest, reponame)
 	}
-
-	dest = filepath.Join(dest, reponame)
 
 	if _, err := os.Stat(dest); err == nil {
 		fmt.Printf("%v: already exists\n", dest)
@@ -79,7 +76,7 @@ func Get(c *cli.Context) error {
 		fmt.Scanln(&ans)
 		switch ans {
 		case "y", "Y", "yes", "Yes", "YES":
-			fmt.Printf("Overwrite repository... %v\n", dest)
+			fmt.Printf("Removing repository... %v\n", dest)
 			os.RemoveAll(dest)
 		case "n", "N", "no", "No", "NO":
 			return nil
