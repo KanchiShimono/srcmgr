@@ -53,9 +53,9 @@ func Get(c *cli.Context) error {
 	names := remoteRepo.Format4UsrRepoNames()
 	username, reponame := remoteRepo.UsrRepoNameFrom(names)
 
-	srcRoot := os.Getenv("GOPATH")
+	srcRoot := localRepositoryRoot()
 	if srcRoot == "" {
-		return util.ShowNewError("GOPATH is not found")
+		return util.ShowNewError("srcmgr root directory is not found")
 	}
 
 	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
