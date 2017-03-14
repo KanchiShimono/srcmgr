@@ -16,11 +16,18 @@ type LocalRepository struct {
 }
 
 func LocalRepositoryPath(fullPath string) (path *LocalRepository, err error) {
-	srcRoot := localRepositoryRoot()
+	var relPath string
 
-	relPath, err := filepath.Rel(srcRoot, fullPath)
-	if err == nil {
+	for _, rootPath := range localRepositoryRoots() {
+		if !strings.HasPrefix(fullPath, rootPath) {
+			continue
+		}
 
+		var err error
+		relPath, err = filepath.Rel(rootPath, fullPath)
+		if err == nil {
+			break
+		}
 	}
 
 	if relPath == "" {
