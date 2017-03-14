@@ -53,7 +53,7 @@ func Get(c *cli.Context) error {
 	names := remoteRepo.Format4UsrRepoNames()
 	username, reponame := remoteRepo.UsrRepoNameFrom(names)
 
-	srcRoot := localRepositoryRoot()
+	srcRoot := firstLocalRepositoryRoot()
 	if srcRoot == "" {
 		return util.ShowNewError("srcmgr root directory is not found")
 	}

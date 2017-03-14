@@ -93,6 +93,6 @@ func localRepositoryRoots() (roots []string) {
 	return roots
 }
 
-func localRepositoryRoot() (root string) {
+func firstLocalRepositoryRoot() (root string) {
 	return localRepositoryRoots()[0]
 }
