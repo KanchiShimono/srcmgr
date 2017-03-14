@@ -101,10 +101,10 @@ func Get(c *cli.Context) error {
 func List(c *cli.Context) error {
 	printRelPath := c.Bool("rel-path")
 	printDeepPath := c.Bool("deep-path")
-	srcRoots := localRepositoryRoots()
+	rootPaths := localRepositoryRoots()
 
-	for _, srcRoot := range srcRoots {
-		if srcRoot == "" {
+	for _, rootPath := range rootPaths {
+		if rootPath == "" {
 			return util.ShowNewError("srcmgr root directory is not found")
 		}
 
@@ -112,7 +112,7 @@ func List(c *cli.Context) error {
 
 		var localRepositories []*LocalRepository
 
-		filepath.Walk(srcRoot, func(path string, info os.FileInfo, err error) error {
+		filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 			if info == nil || info.IsDir() == false || err != nil {
 				return nil
 			}
@@ -132,7 +132,7 @@ func List(c *cli.Context) error {
 				return nil
 			}
 
-			repo, err := LocalRepositoryPath(path, srcRoot)
+			repo, err := LocalRepositoryPath(path, rootPath)
 			if err != nil || repo == nil {
 				return nil
 			}
