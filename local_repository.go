@@ -15,20 +15,8 @@ type LocalRepository struct {
 	PathParts []string
 }
 
-func LocalRepositoryPath(fullPath string) (path *LocalRepository, err error) {
-	var relPath string
-
-	for _, rootPath := range localRepositoryRoots() {
-		if !strings.HasPrefix(fullPath, rootPath) {
-			continue
-		}
-
-		var err error
-		relPath, err = filepath.Rel(rootPath, fullPath)
-		if err == nil {
-			break
-		}
-	}
+func LocalRepositoryPath(fullPath string, rootDirPath string) (path *LocalRepository, err error) {
+	relPath, _ := filepath.Rel(rootDirPath, fullPath)
 
 	if relPath == "" {
 		return nil, fmt.Errorf("No local repository: %s", fullPath)
