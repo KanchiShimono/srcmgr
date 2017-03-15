@@ -1,14 +1,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/KanchiShimono/srcmgr/util"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 )
@@ -36,53 +35,39 @@ var commandList = cli.Command{
 
 func Get(c *cli.Context) error {
 	// Chech to have git command
-	if err := exec.Command("which", "git").Run(); err != nil {
-		fmt.Println("You don't have git command")
-		return err
+	if err := exec.Command("git", "--version").Run(); err != nil {
+		return util.ShowExistError("You don't have git command", err)
 	}
 
-	remoteRepo := c.Args().Get(0)
+	remoteRepo, err := NewRemoteRepository(c.Args().Get(0))
+	if err != nil {
+		return util.ShowExistError(err.Error(), err)
+	}
 
 	// Check URL format
-	if isValid := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`).Match([]byte(remoteRepo)); !isValid {
-		err := errors.New("Invalid github.com URL")
-		fmt.Println(err)
-		return err
+	if !remoteRepo.IsValid() {
+		return util.ShowNewError("Invalid github.com URL")
 	}
 
 	// Format username/reponame
-	repl1 := regexp.MustCompile(`^(((https?|git):\/\/)?github\.com\/)?`)
-	repl2 := regexp.MustCompile(`\.git$`)
-	uri := repl1.ReplaceAllString(remoteRepo, "")
-	uri = repl2.ReplaceAllString(uri, "")
-	// if uri has reponame only
-	if hasUserName := regexp.MustCompile(`/`).Match([]byte(uri)); !hasUserName {
-		user, err := exec.Command("git", "config", "--get", "user.name").Output()
-		if err != nil {
-			fmt.Println("Git user name has not been set")
-			return err
-		}
-		uri = strings.TrimSpace(string(user)) + "/" + uri
+	names := remoteRepo.Format4UsrRepoNames()
+	username, reponame := remoteRepo.UsrRepoNameFrom(names)
+
+	srcRoot := firstLocalRepositoryRoot()
+	if srcRoot == "" {
+		return util.ShowNewError("srcmgr root directory is not found")
 	}
 
-	username := strings.Split(uri, "/")[0]
-	reponame := strings.Split(uri, "/")[1]
-
-	srcRoot := os.Getenv("GOPATH")
 	dest, _ := homedir.Expand(strings.TrimSpace(c.Args().Get(1)))
+	destArgExist := true
 	if dest == "" {
-		dest = filepath.Join(srcRoot, "src/github.com", username)
+		dest = filepath.Join(srcRoot, remoteRepo.URL().Hostname(), username)
+		destArgExist = false
 	}
 
-	if _, err := os.Stat(dest); err != nil {
-		if err := os.MkdirAll(dest, 0755); err != nil {
-			fmt.Println(err)
-			return err
-		}
-		fmt.Printf("mkdir: created directory '%v'\n", dest)
+	if !destArgExist {
+		dest = filepath.Join(dest, reponame)
 	}
-
-	dest = filepath.Join(dest, reponame)
 
 	if _, err := os.Stat(dest); err == nil {
 		fmt.Printf("%v: already exists\n", dest)
@@ -91,27 +76,24 @@ func Get(c *cli.Context) error {
 		fmt.Scanln(&ans)
 		switch ans {
 		case "y", "Y", "yes", "Yes", "YES":
-			fmt.Printf("Overwrite repository... %v\n", dest)
+			fmt.Printf("Removing repository... %v\n", dest)
 			os.RemoveAll(dest)
 		case "n", "N", "no", "No", "NO":
 			return nil
 		default:
-			fmt.Printf("Invalid input %v\n", ans)
+			return util.ShowNewError("Invalid input")
 		}
 	}
 
 	if err := os.MkdirAll(dest, 0755); err != nil {
-		fmt.Println(err)
-		return err
+		return util.ShowExistError(err.Error(), err)
 	}
 
 	fmt.Printf("Cloning into '%v'...\n", dest)
-	if err := exec.Command("git", "clone", "https://github.com/"+uri+".git", dest).Run(); err == nil {
+	if err := exec.Command("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest).Run(); err == nil {
 		return nil
 	} else {
-		err := errors.New("Can not clone")
-		fmt.Println(err)
-		return err
+		return util.ShowExistError("Can not clone", err)
 	}
 
 }
@@ -119,57 +101,57 @@ func Get(c *cli.Context) error {
 func List(c *cli.Context) error {
 	printRelPath := c.Bool("rel-path")
 	printDeepPath := c.Bool("deep-path")
-	srcRoot := os.Getenv("GOPATH")
+	rootPaths := localRepositoryRoots()
 
-	if srcRoot == "" {
-		err := errors.New("GOPATH is not found")
-		fmt.Println(err)
-		return err
-	}
-
-	srcRoot = filepath.Join(srcRoot, "src")
-
-	var localRepositories []*LocalRepository
-
-	filepath.Walk(srcRoot, func(path string, info os.FileInfo, err error) error {
-		if info == nil || info.IsDir() == false || err != nil {
-			return nil
+	for _, rootPath := range rootPaths {
+		if rootPath == "" {
+			return util.ShowNewError("srcmgr root directory is not found")
 		}
 
-		existVCSDir := false
-		var VCSDIR = []string{".git", ".hg", ".svn"}
+		// srcRoot = filepath.Join(srcRoot, "src")
 
-		for _, vcs := range VCSDIR {
-			file, err := os.Stat(filepath.Join(path, vcs))
-			if err == nil && file.IsDir() {
-				existVCSDir = true
-				break
+		var localRepositories []*LocalRepository
+
+		filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+			if info == nil || info.IsDir() == false || err != nil {
+				return nil
 			}
-		}
 
-		if !existVCSDir {
-			return nil
-		}
+			existVCSDir := false
+			var VCSDIR = []string{".git", ".hg", ".svn"}
 
-		repo, err := LocalRepositoryPath(path)
-		if err != nil || repo == nil {
-			return nil
-		}
+			for _, vcs := range VCSDIR {
+				file, err := os.Stat(filepath.Join(path, vcs))
+				if err == nil && file.IsDir() {
+					existVCSDir = true
+					break
+				}
+			}
 
-		localRepositories = append(localRepositories, repo)
+			if !existVCSDir {
+				return nil
+			}
 
-		if printDeepPath {
-			return nil
-		}
+			repo, err := GetLocalRepository(path, rootPath)
+			if err != nil || repo == nil {
+				return nil
+			}
 
-		return filepath.SkipDir
-	})
+			localRepositories = append(localRepositories, repo)
 
-	for _, repo := range localRepositories {
-		if printRelPath {
-			fmt.Println(repo.RelPath)
-		} else {
-			fmt.Println(repo.FullPath)
+			if printDeepPath {
+				return nil
+			}
+
+			return filepath.SkipDir
+		})
+
+		for _, repo := range localRepositories {
+			if printRelPath {
+				fmt.Println(repo.RelPath)
+			} else {
+				fmt.Println(repo.FullPath)
+			}
 		}
 	}
 
