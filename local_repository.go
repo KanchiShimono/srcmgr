@@ -15,7 +15,7 @@ type LocalRepository struct {
 	PathParts []string
 }
 
-func LocalRepositoryPath(fullPath string, rootPath string) (path *LocalRepository, err error) {
+func GetLocalRepository(fullPath string, rootPath string) (path *LocalRepository, err error) {
 	relPath, _ := filepath.Rel(rootPath, fullPath)
 
 	if relPath == "" {
