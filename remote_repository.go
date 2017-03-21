@@ -87,6 +87,10 @@ func NewRemoteRepository(u interface{}) (repo RemotoRepository, err error) {
 		return nil, errors.New("URL argument is invalid type")
 	}
 
+	if err != nil {
+		return nil, errors.New("Invalid URL")
+	}
+
 	host := cnvUrl.Hostname()
 
 	switch host {
