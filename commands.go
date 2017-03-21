@@ -89,8 +89,7 @@ func Get(c *cli.Context) error {
 		return util.ShowExistError(err.Error(), err)
 	}
 
-	fmt.Printf("Cloning into '%v'...\n", dest)
-	if err := exec.Command("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest).Run(); err == nil {
+	if err := util.Run("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest); err == nil {
 		return nil
 	} else {
 		return util.ShowExistError("Can not clone", err)
