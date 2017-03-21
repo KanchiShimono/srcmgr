@@ -24,3 +24,9 @@ func Run(cmd string, opts ...string) (err error) {
 	c.Stderr = os.Stderr
 	return c.Run()
 }
+
+func RunSilent(cmd string, opts ...string) (err error) {
+	c := exec.Command(cmd, opts...)
+	err = c.Run()
+	return err
+}
