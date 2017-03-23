@@ -52,7 +52,6 @@ func localRepositoryRoots() (roots []string) {
 		panic(err)
 	}
 
-	// cfroots := strings.TrimRight(string(buf), "\000")
 	roots = strings.Split(strings.TrimRight(string(buf), "\000"), "\000")
 
 	if len(roots) == 0 {

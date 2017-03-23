@@ -106,8 +106,6 @@ func List(c *cli.Context) error {
 			return util.ShowNewError("srcmgr root directory is not found")
 		}
 
-		// srcRoot = filepath.Join(srcRoot, "src")
-
 		var localRepositories []*LocalRepository
 
 		filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
