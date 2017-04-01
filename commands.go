@@ -68,7 +68,8 @@ func Get(c *cli.Context) error {
 		dest = filepath.Join(dest, reponame)
 	}
 
-	if _, err := os.Stat(dest); err == nil {
+	// If dest is below "srcRoot", user can chose overwrite repository
+	if _, err := os.Stat(dest); err == nil && strings.HasPrefix(dest, srcRoot) {
 		fmt.Printf("%v: already exists\n", dest)
 		fmt.Println("Overwrite repository? (Y/n)")
 		var ans string
