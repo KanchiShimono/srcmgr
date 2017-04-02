@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -35,7 +34,7 @@ var commandList = cli.Command{
 
 func Get(c *cli.Context) error {
 	// Chech to have git command
-	if err := exec.Command("git", "--version").Run(); err != nil {
+	if err := util.RunSilent("git", "--version"); err != nil {
 		return util.ShowExistError("You don't have git command", err)
 	}
 
@@ -69,7 +68,8 @@ func Get(c *cli.Context) error {
 		dest = filepath.Join(dest, reponame)
 	}
 
-	if _, err := os.Stat(dest); err == nil {
+	// If dest is below "srcRoot", user can chose overwrite repository
+	if _, err := os.Stat(dest); err == nil && strings.HasPrefix(dest, srcRoot) {
 		fmt.Printf("%v: already exists\n", dest)
 		fmt.Println("Overwrite repository? (Y/n)")
 		var ans string
@@ -89,8 +89,7 @@ func Get(c *cli.Context) error {
 		return util.ShowExistError(err.Error(), err)
 	}
 
-	fmt.Printf("Cloning into '%v'...\n", dest)
-	if err := exec.Command("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest).Run(); err == nil {
+	if err := util.Run("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest); err == nil {
 		return nil
 	} else {
 		return util.ShowExistError("Can not clone", err)
@@ -107,8 +106,6 @@ func List(c *cli.Context) error {
 		if rootPath == "" {
 			return util.ShowNewError("srcmgr root directory is not found")
 		}
-
-		// srcRoot = filepath.Join(srcRoot, "src")
 
 		var localRepositories []*LocalRepository
 

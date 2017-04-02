@@ -3,6 +3,8 @@ package util
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 )
 
 func ShowExistError(msg string, err error) error {
@@ -13,5 +15,18 @@ func ShowExistError(msg string, err error) error {
 func ShowNewError(msg string) error {
 	err := errors.New(msg)
 	fmt.Println(err)
+	return err
+}
+
+func Run(cmd string, opts ...string) (err error) {
+	c := exec.Command(cmd, opts...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
+}
+
+func RunSilent(cmd string, opts ...string) (err error) {
+	c := exec.Command(cmd, opts...)
+	err = c.Run()
 	return err
 }
