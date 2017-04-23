@@ -60,7 +60,7 @@ func getLocalRepositoryRoots() (roots []string) {
 			srcRoot = filepath.Join(srcRoot, "src")
 			roots = filepath.SplitList(srcRoot)
 		} else {
-			err := errors.New("GOPATH in not difined")
+			err := errors.New("GOPATH is not defined")
 			panic(err)
 		}
 	}
