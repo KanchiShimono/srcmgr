@@ -33,7 +33,7 @@ func GetLocalRepository(fullPath string, rootPath string) (path *LocalRepository
 	return path, nil
 }
 
-func localRepositoryRoots() (roots []string) {
+func getLocalRepositoryRoots() (roots []string) {
 	buf, err := exec.Command(
 		"git",
 		"config",
@@ -81,5 +81,5 @@ func localRepositoryRoots() (roots []string) {
 }
 
 func firstLocalRepositoryRoot() (root string) {
-	return localRepositoryRoots()[0]
+	return getLocalRepositoryRoots()[0]
 }
