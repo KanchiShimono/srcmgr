@@ -129,7 +129,7 @@ func List(c *cli.Context) error {
 				return nil
 			}
 
-			repo, err := GetLocalRepository(path, rootPath)
+			repo, err := GetLocalRepository(path)
 			if err != nil || repo == nil {
 				return nil
 			}
