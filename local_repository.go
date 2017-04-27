@@ -15,8 +15,19 @@ type LocalRepository struct {
 	PathParts []string
 }
 
-func GetLocalRepository(fullPath string, rootPath string) (path *LocalRepository, err error) {
-	relPath, _ := filepath.Rel(rootPath, fullPath)
+func GetLocalRepository(fullPath string) (path *LocalRepository, err error) {
+	var relPath string
+
+	for _, rootPath := range getLocalRepositoryRoots() {
+		if !strings.HasPrefix(fullPath, rootPath) {
+			continue
+		}
+
+		relPath, err = filepath.Rel(rootPath, fullPath)
+		if err == nil {
+			break
+		}
+	}
 
 	if relPath == "" {
 		return nil, fmt.Errorf("No local repository: %s", fullPath)
@@ -33,7 +44,13 @@ func GetLocalRepository(fullPath string, rootPath string) (path *LocalRepository
 	return path, nil
 }
 
-func localRepositoryRoots() (roots []string) {
+var localRepositoryRoots []string
+
+func getLocalRepositoryRoots() (roots []string) {
+	if len(localRepositoryRoots) != 0 {
+		return localRepositoryRoots
+	}
+
 	buf, err := exec.Command(
 		"git",
 		"config",
@@ -52,34 +69,34 @@ func localRepositoryRoots() (roots []string) {
 		panic(err)
 	}
 
-	roots = strings.Split(strings.TrimRight(string(buf), "\000"), "\000")
+	localRepositoryRoots = strings.Split(strings.TrimRight(string(buf), "\000"), "\000")
 
-	if len(roots) == 0 {
+	if len(localRepositoryRoots) == 0 {
 		srcRoot := os.Getenv("GOPATH")
 		if srcRoot != "" {
 			srcRoot = filepath.Join(srcRoot, "src")
-			roots = filepath.SplitList(srcRoot)
+			localRepositoryRoots = filepath.SplitList(srcRoot)
 		} else {
-			err := errors.New("GOPATH in not difined")
+			err := errors.New("GOPATH is not defined")
 			panic(err)
 		}
 	}
 
-	for i, v := range roots {
+	for i, v := range localRepositoryRoots {
 		path := filepath.Clean(v)
 		if _, err := os.Stat(path); err == nil {
-			roots[i], err = filepath.EvalSymlinks(path)
+			localRepositoryRoots[i], err = filepath.EvalSymlinks(path)
 			if err != nil {
 				panic(err)
 			}
 		} else {
-			roots[i] = path
+			localRepositoryRoots[i] = path
 		}
 	}
 
-	return roots
+	return localRepositoryRoots
 }
 
 func firstLocalRepositoryRoot() (root string) {
-	return localRepositoryRoots()[0]
+	return getLocalRepositoryRoots()[0]
 }

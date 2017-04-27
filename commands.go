@@ -100,7 +100,7 @@ func Get(c *cli.Context) error {
 func List(c *cli.Context) error {
 	printRelPath := c.Bool("rel-path")
 	printDeepPath := c.Bool("deep-path")
-	rootPaths := localRepositoryRoots()
+	rootPaths := getLocalRepositoryRoots()
 
 	for _, rootPath := range rootPaths {
 		if rootPath == "" {
@@ -129,7 +129,7 @@ func List(c *cli.Context) error {
 				return nil
 			}
 
-			repo, err := GetLocalRepository(path, rootPath)
+			repo, err := GetLocalRepository(path)
 			if err != nil || repo == nil {
 				return nil
 			}
