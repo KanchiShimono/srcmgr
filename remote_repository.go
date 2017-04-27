@@ -32,7 +32,7 @@ func (repo *GitHub) StringURL() (url string) {
 }
 
 func (repo *GitHub) IsValid() bool {
-	re := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`)
+	re := regexp.MustCompile(`^(((https?|git):\/\/)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`)
 	return re.Match([]byte(repo.url.String()))
 }
 
