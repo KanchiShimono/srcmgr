@@ -73,6 +73,42 @@ func (repo *GitHub) VCS() (vcs VCS) {
 	return &Git{}
 }
 
+type Bitbucket struct {
+	url *url.URL
+}
+
+func (repo *Bitbucket) URL() (url *url.URL) {
+	return repo.url
+}
+
+func (repo *Bitbucket) StringURL() (url string) {
+	return repo.url.String()
+}
+
+func (repo *Bitbucket) IsValid() bool {
+	re := regexp.MustCompile(`^(((https?|ssh)://)?(hg@)?bitbucket\.org/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`)
+	return re.Match([]byte(repo.url.String()))
+}
+
+func (repo *Bitbucket) UsrRepoNameFrom(names string) (usrname, reponame string) {
+	usrname = strings.Split(names, "/")[0]
+	reponame = strings.Split(names, "/")[1]
+
+	return usrname, reponame
+}
+
+func (repo *Bitbucket) Format4UsrRepoNames() (names string) {
+	prefix := regexp.MustCompile(`^(((https?|ssh)://)?(hg@)?bitbucket\.org/)?`)
+
+	names = prefix.ReplaceAllString(repo.StringURL(), "")
+
+	return names
+}
+
+func (repo *Bitbucket) VCS() (vcs VCS) {
+	return &Mercurial{}
+}
+
 func hasUsrName(names string) bool {
 	return regexp.MustCompile(`/`).Match([]byte(names))
 }
@@ -99,6 +135,8 @@ func NewRemoteRepository(u interface{}) (repo RemotoRepository, err error) {
 	switch host {
 	case "github.com":
 		return &GitHub{url: cnvUrl}, err
+	case "bitbucket.org":
+		return &Bitbucket{url: cnvUrl}, err
 	default:
 		cnvUrl.Scheme = "https"
 		cnvUrl.Host = "github.com"
