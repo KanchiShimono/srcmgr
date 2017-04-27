@@ -15,6 +15,7 @@ type RemotoRepository interface {
 	IsValid() bool
 	UsrRepoNameFrom(names string) (usrname, reponame string)
 	Format4UsrRepoNames() (names string)
+	VCS() (vcs VCS)
 }
 
 type GitHub struct {
@@ -66,6 +67,10 @@ func (repo *GitHub) Format4UsrRepoNames() (names string) {
 	names = suffix.ReplaceAllString(names, "")
 
 	return names
+}
+
+func (repo *GitHub) VCS() (vcs VCS) {
+	return &Git{}
 }
 
 func hasUsrName(names string) bool {
