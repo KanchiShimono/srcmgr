@@ -22,13 +22,11 @@ type GitHub struct {
 }
 
 func (repo *GitHub) URL() (url *url.URL) {
-	url = repo.url
-	return url
+	return repo.url
 }
 
 func (repo *GitHub) StringURL() (url string) {
-	url = repo.url.String()
-	return url
+	return repo.url.String()
 }
 
 func (repo *GitHub) IsValid() bool {
