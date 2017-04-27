@@ -15,6 +15,7 @@ type RemotoRepository interface {
 	IsValid() bool
 	UsrRepoNameFrom(names string) (usrname, reponame string)
 	Format4UsrRepoNames() (names string)
+	VCS() (vcs VCS)
 }
 
 type GitHub struct {
@@ -22,17 +23,15 @@ type GitHub struct {
 }
 
 func (repo *GitHub) URL() (url *url.URL) {
-	url = repo.url
-	return url
+	return repo.url
 }
 
 func (repo *GitHub) StringURL() (url string) {
-	url = repo.url.String()
-	return url
+	return repo.url.String()
 }
 
 func (repo *GitHub) IsValid() bool {
-	re := regexp.MustCompile(`^(((https?|git)://)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`)
+	re := regexp.MustCompile(`^(((https?|git):\/\/)?github\.com/)?([A-Za-z0-9_-]+/)?[A-Za-z0-9_.-]+(\.git)?$`)
 	return re.Match([]byte(repo.url.String()))
 }
 
@@ -68,6 +67,10 @@ func (repo *GitHub) Format4UsrRepoNames() (names string) {
 	names = suffix.ReplaceAllString(names, "")
 
 	return names
+}
+
+func (repo *GitHub) VCS() (vcs VCS) {
+	return &Git{}
 }
 
 func hasUsrName(names string) bool {
