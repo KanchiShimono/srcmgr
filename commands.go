@@ -89,7 +89,9 @@ func Get(c *cli.Context) error {
 		return util.ShowExistError(err.Error(), err)
 	}
 
-	if err := util.Run("git", "clone", "https://github.com/"+username+"/"+reponame+".git", dest); err == nil {
+	vcs := remoteRepo.VCS()
+
+	if err := vcs.Clone(remoteRepo, dest); err == nil {
 		return nil
 	} else {
 		return util.ShowExistError("Can not clone", err)
