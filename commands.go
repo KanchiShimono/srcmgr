@@ -33,7 +33,7 @@ var commandList = cli.Command{
 }
 
 func Get(c *cli.Context) error {
-	// Chech to have git command
+	// Check to have git command
 	if err := util.RunSilent("git", "--version"); err != nil {
 		return util.ShowExistError("You don't have git command", err)
 	}
