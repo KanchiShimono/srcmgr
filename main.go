@@ -18,6 +18,6 @@ func srcmgr() *cli.App {
 	app.Usage = "CVS repository manager"
 	app.Version = Version
 	app.Commands = Commands
-	app.Authors = []*cli.Author{{Name: "KanchiShimono", Email: "shimono-kanchi-yc@ynu.jp"}}
+	app.Authors = []*cli.Author{{Name: "KanchiShimono", Email: "dev.kanchi.shimono@gmail.com"}}
 	return app
 }
