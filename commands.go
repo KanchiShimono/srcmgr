@@ -8,27 +8,27 @@ import (
 
 	"github.com/KanchiShimono/srcmgr/util"
 	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-var Commands = []cli.Command{
+var Commands = []*cli.Command{
 	commandGet,
 	commandList,
 }
 
-var commandGet = cli.Command{
+var commandGet = &cli.Command{
 	Name:   "get",
 	Usage:  "Clone git repository",
 	Action: Get,
 }
 
-var commandList = cli.Command{
+var commandList = &cli.Command{
 	Name:   "list",
 	Usage:  "List managed repository",
 	Action: List,
 	Flags: []cli.Flag{
-		cli.BoolFlag{Name: "rel-path, r", Usage: "Print relative path"},
-		cli.BoolFlag{Name: "deep-path, d", Usage: "Print path to .git of sub directories"},
+		&cli.BoolFlag{Name: "rel-path", Aliases: []string{"r"}, Usage: "Print relative path"},
+		&cli.BoolFlag{Name: "deep-path", Aliases: []string{"d"}, Usage: "Print path to .git of sub directories"},
 	},
 }
 
@@ -96,7 +96,6 @@ func Get(c *cli.Context) error {
 	} else {
 		return util.ShowExistError("Can not clone", err)
 	}
-
 }
 
 func List(c *cli.Context) error {
@@ -117,7 +116,7 @@ func List(c *cli.Context) error {
 			}
 
 			existVCSDir := false
-			var VCSDIR = []string{".git", ".hg", ".svn"}
+			VCSDIR := []string{".git", ".hg", ".svn"}
 
 			for _, vcs := range VCSDIR {
 				file, err := os.Stat(filepath.Join(path, vcs))
