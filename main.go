@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
@@ -18,7 +18,6 @@ func srcmgr() *cli.App {
 	app.Usage = "CVS repository manager"
 	app.Version = Version
 	app.Commands = Commands
-	app.Author = "KanchiShimono"
-	app.Email = "shimono-kanchi-yc@ynu.jp"
+	app.Authors = []*cli.Author{{Name: "KanchiShimono", Email: "shimono-kanchi-yc@ynu.jp"}}
 	return app
 }
