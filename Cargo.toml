@@ -1,0 +1,22 @@
+[package]
+name = "srcmgr"
+version = "0.0.1"
+edition = "2024"
+authors = ["Kanchi"]
+description = "Simple repository manager"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+gix = { version = "0.85", default-features = false, features = [
+    "blocking-http-transport-reqwest-rust-tls",
+    "sha1",
+    "worktree-mutation",
+] }
+rustix = { version = "1", features = ["fs"] }
+thiserror = "2"
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3"
