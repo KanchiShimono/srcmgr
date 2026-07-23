@@ -1,10 +1,10 @@
-use crate::canonical_dir::{CanonicalDir, CanonicalDirError};
-use crate::non_empty_vec::NonEmptyVec;
-use gix::{
-    config::{File, Path as ConfigPath, Source, path::interpolate},
-    path::env,
+use crate::{
+    canonical_dir::{CanonicalDir, CanonicalDirError},
+    non_empty_vec::NonEmptyVec,
+    path_expansion::{HomeDirectory, HomeDirectoryError, PathExpansionError, expand_git_path},
 };
-use std::{collections::HashSet, path::Path, str::Utf8Error};
+use gix::config::{File, Path as ConfigPath, Source};
+use std::{collections::HashSet, str::Utf8Error};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -15,12 +15,12 @@ pub(crate) struct Config {
 
 #[derive(Debug, Error)]
 pub(crate) enum ConfigError {
-    #[error("could not determine the home directory")]
-    HomeDirectory,
+    #[error(transparent)]
+    HomeDirectory(#[from] HomeDirectoryError),
     #[error(transparent)]
     Load(#[from] gix::config::file::init::from_paths::Error),
     #[error("could not interpolate srcmgr.root")]
-    InterpolateRoot(#[source] interpolate::Error),
+    InterpolateRoot(#[source] PathExpansionError),
     #[error("srcmgr.root is not configured")]
     MissingRoot,
     #[error("invalid srcmgr.root")]
@@ -30,32 +30,18 @@ pub(crate) enum ConfigError {
 }
 
 impl Config {
-    pub(crate) fn load() -> Result<Self, ConfigError> {
-        let home = env::home_dir().ok_or(ConfigError::HomeDirectory)?;
-        let config = File::from_path_no_includes(home.join(".gitconfig"), Source::User)?;
-        Self::from_file(&config, &home)
+    pub(crate) fn load(home: &HomeDirectory) -> Result<Self, ConfigError> {
+        let config = File::from_path_no_includes(home.as_path().join(".gitconfig"), Source::User)?;
+        Self::from_file_with_home(&config, home)
     }
 
-    fn from_file(config: &File<'_>, home: &Path) -> Result<Self, ConfigError> {
-        let interpolation = interpolate::Context {
-            home_dir: Some(home),
-            ..Default::default()
-        };
+    fn from_file_with_home(config: &File<'_>, home: &HomeDirectory) -> Result<Self, ConfigError> {
         let root_paths = config
             .strings("srcmgr.root")
             .unwrap_or_default()
             .into_iter()
             .map(|root| {
-                let root = ConfigPath::from(root)
-                    .interpolate(interpolation)
-                    .map_err(ConfigError::InterpolateRoot)?
-                    .into_owned();
-                let root = if root == Path::new("~") {
-                    home.to_owned()
-                } else {
-                    root
-                };
-                Ok(root)
+                expand_git_path(ConfigPath::from(root), home).map_err(ConfigError::InterpolateRoot)
             })
             .collect::<Result<Vec<_>, ConfigError>>()?;
         let mut roots = root_paths
@@ -76,6 +62,12 @@ impl Config {
             })
             .transpose()?;
         Ok(Self { roots, user_name })
+    }
+
+    #[cfg(test)]
+    fn from_file(config: &File<'_>, home: &std::path::Path) -> Result<Self, ConfigError> {
+        let home = HomeDirectory::from_path(home.to_owned());
+        Self::from_file_with_home(config, &home)
     }
 
     pub(crate) fn roots(&self) -> &NonEmptyVec<CanonicalDir> {
