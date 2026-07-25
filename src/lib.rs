@@ -1,6 +1,10 @@
 mod canonical_dir;
 pub mod cli;
+mod clone_destination;
 mod commands;
 mod config;
+mod destination_transaction;
+mod git_clone;
 mod non_empty_vec;
 mod path_expansion;
+mod remote_repository;

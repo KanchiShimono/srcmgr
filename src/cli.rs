@@ -19,7 +19,7 @@ pub fn cli_main() -> Result<()> {
 
     match cli.command {
         Commands::Completion(args) => generate_completion(&args),
-        Commands::Get(args) => get::run(&args),
+        Commands::Get(args) => get::run(&args)?,
         Commands::List(args) => list::run(&args)?,
     }
 
