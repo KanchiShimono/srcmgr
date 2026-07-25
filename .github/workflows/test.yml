@@ -29,7 +29,9 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
-          - windows-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup | Checkout
@@ -48,7 +50,9 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
-          - windows-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup | Checkout
@@ -67,7 +71,9 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
-          - windows-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup | Checkout
