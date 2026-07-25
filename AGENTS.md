@@ -14,9 +14,9 @@ Strictly adhere to these functional programming principles throughout developmen
 
 - `cargo build` — compile the library and `sm` binary in debug mode.
 - `cargo run --bin sm -- --help` — run the CLI locally without installing it.
-- `cargo test --all-targets` — run the complete unit-test suite.
+- `cargo test --workspace --locked --all-features --all-targets --no-fail-fast` — run the complete unit-test suite.
 - `cargo fmt --all -- --check` — verify default `rustfmt` formatting.
-- `cargo clippy --workspace --locked --all-targets --all-features -- -D warnings -D clippy::all` — lint every target and reject warnings.
+- `cargo clippy --config 'build.warnings="deny"' --workspace --locked --all-targets --all-features` — lint every target and reject warnings.
 
 Run all three quality checks before submitting a change. Commit
 `Cargo.lock` whenever dependency resolution changes.
