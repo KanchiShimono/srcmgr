@@ -1,0 +1,86 @@
+name: Test
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*.*.*"
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7
+
+      - name: Build | Format
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup | Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build | Lint
+        run: cargo clippy --config 'build.warnings="deny"' --workspace --locked --all-targets --all-features
+
+  check:
+    name: Check (compile)
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup | Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build | Check
+        run: cargo check --workspace --locked --all-targets --all-features
+
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          # Windows is disabled until the stable toolchain can compile the
+          # Windows-specific directory identity implementation.
+          # - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup | Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --workspace --locked --all-features --all-targets --no-fail-fast --verbose
