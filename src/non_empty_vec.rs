@@ -1,3 +1,4 @@
+use std::{slice::Iter, vec::IntoIter};
 use thiserror::Error;
 
 /// A vector with at least one element.
@@ -36,7 +37,7 @@ impl<T> From<NonEmptyVec<T>> for Vec<T> {
 
 impl<T> IntoIterator for NonEmptyVec<T> {
     type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -45,7 +46,7 @@ impl<T> IntoIterator for NonEmptyVec<T> {
 
 impl<'a, T> IntoIterator for &'a NonEmptyVec<T> {
     type Item = &'a T;
-    type IntoIter = std::slice::Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()

@@ -3,10 +3,10 @@ use crate::{
     path_expansion::{self, HomeDirectory, PathExpansionError},
     remote_repository::RemoteRepository,
 };
-use gix::bstr::BStr;
+use gix::{bstr::BStr, config};
 use std::{
     borrow::Cow,
-    path::{Path, PathBuf},
+    path::{self, PathBuf},
 };
 use thiserror::Error;
 
@@ -17,7 +17,7 @@ pub(crate) enum CloneDestination {
 }
 
 impl CloneDestination {
-    pub(crate) fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &path::Path {
         match self {
             Self::Managed(destination) => &destination.path,
             Self::Explicit(destination) => &destination.path,
@@ -79,9 +79,9 @@ impl ExplicitDestination {
             return Err(DestinationParseError::Empty);
         }
 
-        let input_path = Path::new(input);
+        let input_path = path::Path::new(input);
         let path = if input.starts_with('~') {
-            let input = gix::config::Path::from(Cow::Borrowed(BStr::new(input.as_bytes())));
+            let input = config::Path::from(Cow::Borrowed(BStr::new(input.as_bytes())));
             path_expansion::expand_git_path(input, home)
                 .map_err(DestinationParseError::Interpolate)?
         } else {
@@ -96,14 +96,14 @@ impl ExplicitDestination {
     }
 }
 
-fn explicit_parent_candidates(path: &Path) -> Vec<PathBuf> {
+fn explicit_parent_candidates(path: &path::Path) -> Vec<PathBuf> {
     let Some(parent) = path.parent() else {
         return Vec::new();
     };
     let mut candidates = parent
         .ancestors()
         .take_while(|ancestor| !ancestor.as_os_str().is_empty())
-        .map(Path::to_owned)
+        .map(path::Path::to_owned)
         .collect::<Vec<_>>();
     candidates.reverse();
     candidates

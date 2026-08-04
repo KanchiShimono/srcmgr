@@ -1,11 +1,19 @@
 use crate::non_empty_vec::NonEmptyVec;
-use gix::bstr::BStr;
-use std::path::{Component, PathBuf};
+use gix::{
+    Url,
+    bstr::{BStr, BString},
+    path,
+    url::{Scheme, parse::Error},
+};
+use std::{
+    iter,
+    path::{Component, PathBuf},
+};
 use thiserror::Error;
 
 #[derive(Debug)]
 pub(crate) struct RemoteRepository {
-    clone_url: gix::Url,
+    clone_url: Url,
     host: SafePathComponent,
     path: NonEmptyVec<SafePathComponent>,
 }
@@ -31,7 +39,7 @@ impl RemoteRepository {
                 if remote_path_contains_encoded_separator(input) {
                     return Err(RepositoryError::EncodedPathSeparator);
                 }
-                gix::Url::try_from(input)
+                Url::try_from(input)
                     .map_err(Box::new)
                     .map_err(RepositoryError::ParseUrl)?
             }
@@ -39,13 +47,10 @@ impl RemoteRepository {
 
         if !matches!(
             clone_url.scheme,
-            gix::url::Scheme::Http
-                | gix::url::Scheme::Https
-                | gix::url::Scheme::Ssh
-                | gix::url::Scheme::Git
+            Scheme::Http | Scheme::Https | Scheme::Ssh | Scheme::Git
         ) {
             return Err(match clone_url.scheme {
-                gix::url::Scheme::File => RepositoryError::LocalRepository,
+                Scheme::File => RepositoryError::LocalRepository,
                 ref scheme => RepositoryError::UnsupportedScheme(scheme.to_string()),
             });
         }
@@ -66,12 +71,12 @@ impl RemoteRepository {
     }
 
     pub(crate) fn managed_path_components(&self) -> impl Iterator<Item = PathBuf> + '_ {
-        std::iter::once(&self.host)
+        iter::once(&self.host)
             .chain(self.path.iter())
             .map(SafePathComponent::to_path_buf)
     }
 
-    pub(crate) fn into_clone_url(self) -> gix::Url {
+    pub(crate) fn into_clone_url(self) -> Url {
         self.clone_url
     }
 }
@@ -105,11 +110,8 @@ fn remote_path_contains_encoded_separator(input: &str) -> bool {
     })
 }
 
-fn github_url(
-    owner: &GithubOwner,
-    repository: &RepositoryName,
-) -> Result<gix::Url, RepositoryError> {
-    gix::Url::try_from(format!(
+fn github_url(owner: &GithubOwner, repository: &RepositoryName) -> Result<Url, RepositoryError> {
+    Url::try_from(format!(
         "https://github.com/{}/{}",
         owner.as_str(),
         repository.as_str()
@@ -230,7 +232,7 @@ impl SafePathComponent {
             return Err(PathComponentError::Separator);
         }
 
-        let path = gix::path::from_bstr(BStr::new(value));
+        let path = path::from_bstr(BStr::new(value));
         let mut components = path.components();
         if !matches!(
             (components.next(), components.next()),
@@ -243,13 +245,13 @@ impl SafePathComponent {
 
     fn to_path_buf(&self) -> PathBuf {
         let mut path = PathBuf::new();
-        path.push(gix::path::from_bstr(BStr::new(&self.0)).as_ref());
+        path.push(path::from_bstr(BStr::new(&self.0)).as_ref());
         path
     }
 }
 
 fn destination_path(
-    remote_path: &gix::bstr::BString,
+    remote_path: &BString,
 ) -> Result<NonEmptyVec<SafePathComponent>, RepositoryError> {
     let remote_path: &[u8] = remote_path.as_ref();
     let path = remote_path.strip_prefix(b"/").unwrap_or(remote_path);
@@ -278,7 +280,7 @@ pub(crate) enum RepositoryError {
     #[error("local repositories and file URLs are not supported")]
     LocalRepository,
     #[error("repository URL could not be parsed")]
-    ParseUrl(#[source] Box<gix::url::parse::Error>),
+    ParseUrl(#[source] Box<Error>),
     #[error("repository URL scheme {0:?} is not supported")]
     UnsupportedScheme(String),
     #[error("repository URL does not contain a host")]

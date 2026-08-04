@@ -5,11 +5,7 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-use gix::{
-    NestedProgress, Url,
-    clone::PrepareFetch,
-    create::{self, Kind},
-};
+use gix::{NestedProgress, Url, clone::PrepareFetch, create::Kind};
 use thiserror::Error;
 
 pub(crate) fn clone_repository<P>(
@@ -21,7 +17,7 @@ where
     P: NestedProgress,
     P::SubProgress: 'static,
 {
-    let create_options = create::Options {
+    let create_options = gix::create::Options {
         destination_must_be_empty: Some(true),
         ..Default::default()
     };

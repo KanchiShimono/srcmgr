@@ -3,8 +3,13 @@ use crate::{
     non_empty_vec::NonEmptyVec,
     path_expansion::{self, HomeDirectory, HomeDirectoryError, PathExpansionError},
 };
-use gix::config::{File, Path as ConfigPath, Source};
-use std::{collections::HashSet, str::Utf8Error};
+use gix::config::{self, File, Source, file::init::from_paths::Error};
+#[cfg(test)]
+use std::path;
+use std::{
+    collections::HashSet,
+    str::{self, Utf8Error},
+};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -18,7 +23,7 @@ pub(crate) enum ConfigError {
     #[error(transparent)]
     HomeDirectory(#[from] HomeDirectoryError),
     #[error(transparent)]
-    Load(#[from] gix::config::file::init::from_paths::Error),
+    Load(#[from] Error),
     #[error("could not interpolate srcmgr.root")]
     InterpolateRoot(#[source] PathExpansionError),
     #[error("srcmgr.root is not configured")]
@@ -41,14 +46,14 @@ impl Config {
             .unwrap_or_default()
             .into_iter()
             .map(|root| {
-                path_expansion::expand_git_path(ConfigPath::from(root), home)
+                path_expansion::expand_git_path(config::Path::from(root), home)
                     .map_err(ConfigError::InterpolateRoot)
             })
             .collect::<Result<Vec<_>, ConfigError>>()?;
         let mut roots = root_paths
             .into_iter()
             .map(CanonicalDir::try_from)
-            .collect::<std::result::Result<Vec<_>, _>>()
+            .collect::<Result<Vec<_>, _>>()
             .map_err(ConfigError::InvalidRoot)?;
         let mut seen = HashSet::new();
         roots.retain(|root| seen.insert(root.clone()));
@@ -57,7 +62,7 @@ impl Config {
         let user_name = config
             .string("user.name")
             .map(|name| {
-                std::str::from_utf8(name.as_ref())
+                str::from_utf8(name.as_ref())
                     .map_err(ConfigError::InvalidUserName)
                     .map(str::to_owned)
             })
@@ -66,7 +71,7 @@ impl Config {
     }
 
     #[cfg(test)]
-    fn from_file(config: &File, home: &std::path::Path) -> Result<Self, ConfigError> {
+    fn from_file(config: &File, home: &path::Path) -> Result<Self, ConfigError> {
         let home = HomeDirectory::from_path(home.to_owned());
         Self::from_file_with_home(config, &home)
     }
