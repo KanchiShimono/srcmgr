@@ -9,7 +9,6 @@ use gix::{
     NestedProgress, Url,
     clone::PrepareFetch,
     create::{self, Kind},
-    open,
 };
 use thiserror::Error;
 
@@ -33,7 +32,7 @@ where
         destination,
         Kind::WithWorktree,
         create_options,
-        open::Options::default(),
+        gix::open::Options::default(),
     )
     .map_err(|source| CloneError(CloneErrorKind::Prepare(ErrorSnapshot::capture(&source))))?;
 

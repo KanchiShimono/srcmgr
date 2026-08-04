@@ -472,7 +472,6 @@ mod tests {
         remote_repository::RemoteRepository,
     };
     use std::{fs, path::Path};
-    use tempfile::tempdir;
 
     fn explicit_destination(path: &Path) -> CloneDestination {
         let home = HomeDirectory::from_path("unused-home");
@@ -484,7 +483,7 @@ mod tests {
 
     #[test]
     fn commit_keeps_the_destination_and_checkout_contents() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let destination = temp.path().join("new").join("namespace").join("repository");
         let transaction =
             DestinationTransaction::begin(explicit_destination(&destination)).unwrap();
@@ -500,7 +499,7 @@ mod tests {
 
     #[test]
     fn rollback_removes_the_clone_tree_and_new_empty_parents_only() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let existing_parent = temp.path().join("existing");
         let new_parent = existing_parent.join("new");
         let destination = new_parent.join("namespace").join("repository");
@@ -518,7 +517,7 @@ mod tests {
 
     #[test]
     fn rollback_keeps_a_created_parent_that_has_since_become_non_empty() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let created_parent = temp.path().join("created");
         let destination = created_parent.join("repository");
         let transaction =
@@ -536,7 +535,7 @@ mod tests {
 
     #[test]
     fn rollback_of_a_managed_destination_never_removes_the_managed_root() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("managed-root");
         fs::create_dir(&root).unwrap();
         let managed_root = CanonicalDir::try_from(root.clone()).unwrap();
@@ -557,7 +556,7 @@ mod tests {
 
     #[test]
     fn rollback_refuses_to_delete_a_replacement_at_the_destination_path() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let destination = temp.path().join("repository");
         let transaction =
             DestinationTransaction::begin(explicit_destination(&destination)).unwrap();
@@ -572,7 +571,7 @@ mod tests {
 
     #[test]
     fn begin_does_not_recreate_a_managed_root_removed_after_configuration() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("managed-root");
         fs::create_dir(&root).unwrap();
         let managed_root = CanonicalDir::try_from(root.clone()).unwrap();
@@ -592,7 +591,7 @@ mod tests {
 
     #[test]
     fn an_existing_destination_is_rejected_without_modifying_it() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let destination = temp.path().join("repository");
         fs::write(&destination, "existing contents").unwrap();
 
@@ -608,11 +607,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_dangling_destination_symlink_is_still_considered_existing() {
-        use std::os::unix::fs::symlink;
+        use std::os::unix::fs as unix_fs;
 
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let destination = temp.path().join("repository");
-        symlink(temp.path().join("missing-target"), &destination).unwrap();
+        unix_fs::symlink(temp.path().join("missing-target"), &destination).unwrap();
 
         let result = DestinationTransaction::begin(explicit_destination(&destination));
 

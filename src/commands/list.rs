@@ -285,7 +285,6 @@ mod tests {
         path::{Path, PathBuf},
         slice,
     };
-    use tempfile::tempdir;
 
     const DEFAULT: ListArgs = ListArgs {
         relative: false,
@@ -433,7 +432,7 @@ mod tests {
     fn ignores_directory_symlinks_below_roots() {
         use std::os::unix::fs as unix_fs;
 
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let outside = temp.path().join("outside");
         repository(&root.join("direct"), ".git");
@@ -449,7 +448,7 @@ mod tests {
     #[test]
     fn recognizes_git_hg_and_svn_directories() {
         for marker in [".git", ".hg", ".svn"] {
-            let temp = tempdir().unwrap();
+            let temp = tempfile::tempdir().unwrap();
             let root = temp.path().join("root");
             repository(&root.join("repository"), marker);
 
@@ -463,7 +462,7 @@ mod tests {
     #[test]
     fn ignores_hg_and_svn_files() {
         for marker in [".hg", ".svn"] {
-            let temp = tempdir().unwrap();
+            let temp = tempfile::tempdir().unwrap();
             let root = temp.path().join("root");
             fs::create_dir_all(root.join("candidate")).unwrap();
             fs::write(root.join("candidate").join(marker), "").unwrap();
@@ -477,7 +476,7 @@ mod tests {
 
     #[test]
     fn recognizes_gitfiles() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let worktree = root.join("worktree");
         let gitdir = root.join("gitdir");
@@ -497,7 +496,7 @@ mod tests {
 
     #[test]
     fn resolves_gitdirs_relative_to_gitfile_parents() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         fs::create_dir_all(root.join("worktree")).unwrap();
         fs::create_dir_all(root.join("gitdir")).unwrap();
@@ -511,7 +510,7 @@ mod tests {
 
     #[test]
     fn requires_gitfile_targets_to_exist() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let worktree = root.join("worktree");
         fs::create_dir_all(&worktree).unwrap();
@@ -532,7 +531,7 @@ mod tests {
 
     #[test]
     fn scans_roots_in_configuration_order() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let first = temp.path().join("first");
         let second = temp.path().join("second");
         repository(&first.join("from-first"), ".git");
@@ -546,7 +545,7 @@ mod tests {
 
     #[test]
     fn scans_paths_in_lexicographic_order() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("zeta"), ".git");
         repository(&root.join("alpha").join("deep"), ".git");
@@ -562,7 +561,7 @@ mod tests {
 
     #[test]
     fn stops_at_repositories_by_default() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("outer"), ".git");
         repository(&root.join("outer").join("inner"), ".git");
@@ -575,7 +574,7 @@ mod tests {
 
     #[test]
     fn scans_nested_repositories() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("outer"), ".git");
         repository(&root.join("outer").join("inner"), ".git");
@@ -591,7 +590,7 @@ mod tests {
 
     #[test]
     fn writes_repositories_as_they_are_found() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("alpha"), ".git");
         let middle = root.join("middle");
@@ -621,7 +620,7 @@ mod tests {
 
     #[test]
     fn classifies_repository_path_write_errors() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("repository"), ".git");
         let roots = canonical_roots(slice::from_ref(&root));
@@ -639,7 +638,7 @@ mod tests {
 
     #[test]
     fn classifies_repository_path_flush_errors() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("repository"), ".git");
         let roots = canonical_roots(slice::from_ref(&root));
@@ -662,7 +661,7 @@ mod tests {
 
     #[test]
     fn classifies_diagnostic_write_errors() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let removed = temp.path().join("removed");
         fs::create_dir(&removed).unwrap();
         let roots = canonical_roots(slice::from_ref(&removed));
@@ -681,7 +680,7 @@ mod tests {
 
     #[test]
     fn writes_one_line_per_repository() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("alpha"), ".git");
         repository(&root.join("beta"), ".git");
@@ -697,7 +696,7 @@ mod tests {
 
     #[test]
     fn prints_absolute_paths_by_default() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let repository_path = root.join("repository");
         repository(&repository_path, ".git");
@@ -713,7 +712,7 @@ mod tests {
 
     #[test]
     fn prints_paths_relative_to_each_root() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let first = temp.path().join("first");
         let second = temp.path().join("second");
         let relative = PathBuf::from("repository");
@@ -728,7 +727,7 @@ mod tests {
 
     #[test]
     fn writes_path_qualified_diagnostics_only_to_stderr() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let removed = temp.path().join("removed");
         fs::create_dir(&removed).unwrap();
         let roots = canonical_roots(slice::from_ref(&removed));
@@ -743,7 +742,7 @@ mod tests {
 
     #[test]
     fn continues_after_roots_are_removed_after_configuration_loads() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let removed = temp.path().join("removed");
         let root = temp.path().join("root");
         fs::create_dir(&removed).unwrap();
@@ -764,7 +763,7 @@ mod tests {
 
     #[test]
     fn records_roots_replaced_with_files_after_configuration_loads() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let replaced = temp.path().join("replaced");
         fs::create_dir(&replaced).unwrap();
         let roots = canonical_roots(slice::from_ref(&replaced));
@@ -787,7 +786,7 @@ mod tests {
     fn records_roots_replaced_with_symlinks_after_configuration_loads() {
         use std::os::unix::fs as unix_fs;
 
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let replaced = temp.path().join("replaced");
         let outside = temp.path().join("outside");
         fs::create_dir(&replaced).unwrap();
@@ -809,7 +808,7 @@ mod tests {
 
     #[test]
     fn records_invalid_gitfiles_and_continues() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let malformed = root.join("malformed");
         fs::create_dir_all(&malformed).unwrap();
@@ -832,7 +831,7 @@ mod tests {
 
     #[test]
     fn records_directory_read_errors_and_continues() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("alpha"), ".git");
         let unreadable = root.join("middle-unreadable");
@@ -866,7 +865,7 @@ mod tests {
 
     #[test]
     fn fails_after_scanning_with_one_error() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let removed = temp.path().join("removed");
         let root = temp.path().join("root");
         fs::create_dir(&removed).unwrap();
@@ -882,7 +881,7 @@ mod tests {
 
     #[test]
     fn succeeds_without_repositories() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         fs::create_dir(&root).unwrap();
 

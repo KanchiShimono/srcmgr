@@ -1,6 +1,6 @@
 use crate::{
     canonical_dir::CanonicalDir,
-    path_expansion::{HomeDirectory, PathExpansionError, expand_git_path},
+    path_expansion::{self, HomeDirectory, PathExpansionError},
     remote_repository::RemoteRepository,
 };
 use gix::bstr::BStr;
@@ -82,7 +82,8 @@ impl ExplicitDestination {
         let input_path = Path::new(input);
         let path = if input.starts_with('~') {
             let input = gix::config::Path::from(Cow::Borrowed(BStr::new(input.as_bytes())));
-            expand_git_path(input, home).map_err(DestinationParseError::Interpolate)?
+            path_expansion::expand_git_path(input, home)
+                .map_err(DestinationParseError::Interpolate)?
         } else {
             input_path.to_owned()
         };
@@ -124,11 +125,10 @@ mod tests {
         remote_repository::RemoteRepository,
     };
     use std::path::{Path, PathBuf};
-    use tempfile::tempdir;
 
     #[test]
     fn managed_destination_preserves_its_root_and_uses_repository_components() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let managed_root = CanonicalDir::try_from(temp.path().to_owned()).unwrap();
         let repository =
             RemoteRepository::parse("https://example.com/owner/repository.git", None).unwrap();
