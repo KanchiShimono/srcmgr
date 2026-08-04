@@ -35,7 +35,7 @@ impl Config {
         Self::from_file_with_home(&config, home)
     }
 
-    fn from_file_with_home(config: &File<'_>, home: &HomeDirectory) -> Result<Self, ConfigError> {
+    fn from_file_with_home(config: &File, home: &HomeDirectory) -> Result<Self, ConfigError> {
         let root_paths = config
             .strings("srcmgr.root")
             .unwrap_or_default()
@@ -66,7 +66,7 @@ impl Config {
     }
 
     #[cfg(test)]
-    fn from_file(config: &File<'_>, home: &std::path::Path) -> Result<Self, ConfigError> {
+    fn from_file(config: &File, home: &std::path::Path) -> Result<Self, ConfigError> {
         let home = HomeDirectory::from_path(home.to_owned());
         Self::from_file_with_home(config, &home)
     }

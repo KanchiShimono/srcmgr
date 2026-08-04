@@ -25,14 +25,14 @@ impl HomeDirectory {
 }
 
 pub(crate) fn expand_git_path(
-    input: ConfigPath<'_>,
+    input: ConfigPath,
     home: &HomeDirectory,
 ) -> Result<PathBuf, PathExpansionError> {
     expand_git_path_with_user_lookup(input, home, interpolate::home_for_user)
 }
 
 fn expand_git_path_with_user_lookup(
-    input: ConfigPath<'_>,
+    input: ConfigPath,
     home: &HomeDirectory,
     home_for_user: HomeForUser,
 ) -> Result<PathBuf, PathExpansionError> {
@@ -47,7 +47,7 @@ fn expand_git_path_with_user_lookup(
     if path == Path::new("~") {
         Ok(home.as_path().to_owned())
     } else {
-        Ok(path.into_owned())
+        Ok(path)
     }
 }
 
@@ -66,17 +66,14 @@ mod tests {
         bstr::BStr,
         config::{Path as ConfigPath, path::interpolate},
     };
-    use std::{
-        borrow::Cow,
-        path::{Path, PathBuf},
-    };
+    use std::path::{Path, PathBuf};
 
     fn home_directory() -> HomeDirectory {
         HomeDirectory::from_path("current-home")
     }
 
-    fn config_path(input: &str) -> ConfigPath<'_> {
-        ConfigPath::from(Cow::Borrowed(BStr::new(input.as_bytes())))
+    fn config_path(input: &str) -> ConfigPath {
+        ConfigPath::from(input)
     }
 
     fn alice_home_directory(user: &str) -> Option<PathBuf> {
@@ -246,7 +243,7 @@ mod tests {
         use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
         let home = home_directory();
-        let input = ConfigPath::from(Cow::Borrowed(BStr::new(b"~/\xff")));
+        let input = ConfigPath::from(BStr::new(b"~/\xff"));
 
         let expanded = super::expand_git_path(input, &home).unwrap();
 
