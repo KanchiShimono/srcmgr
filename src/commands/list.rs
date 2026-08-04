@@ -6,7 +6,7 @@ use crate::{
     path_expansion::HomeDirectory,
 };
 use clap::Args;
-use gix::discover::path::{self as git_path, from_gitdir_file::Error as GitFileError};
+use gix::discover::path;
 use std::{
     fs,
     io::{self, ErrorKind, Write},
@@ -178,12 +178,11 @@ fn is_git_repository(path: &Path) -> Result<bool, GitRepositoryError> {
         return Err(GitRepositoryError::InvalidMarkerType { path: marker });
     }
 
-    let git_dir = git_path::from_gitdir_file(&marker).map_err(|source| {
-        GitRepositoryError::InvalidGitFile {
+    let git_dir =
+        path::from_gitdir_file(&marker).map_err(|source| GitRepositoryError::InvalidGitFile {
             path: marker.clone(),
             source,
-        }
-    })?;
+        })?;
     match fs::metadata(&git_dir) {
         Ok(metadata) if metadata.is_dir() => Ok(true),
         Ok(_) => Err(GitRepositoryError::GitDirectoryNotDirectory { path: git_dir }),
@@ -256,7 +255,7 @@ enum GitRepositoryError {
     InvalidGitFile {
         path: PathBuf,
         #[source]
-        source: GitFileError,
+        source: path::from_gitdir_file::Error,
     },
     #[error("{} is not a directory", path.display())]
     GitDirectoryNotDirectory { path: PathBuf },
@@ -430,14 +429,14 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn ignores_directory_symlinks_below_roots() {
-        use std::os::unix::fs as unix_fs;
+        use std::os::unix;
 
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let outside = temp.path().join("outside");
         repository(&root.join("direct"), ".git");
         repository(&outside.join("linked"), ".git");
-        unix_fs::symlink(&outside, root.join("directory-link")).unwrap();
+        unix::fs::symlink(&outside, root.join("directory-link")).unwrap();
 
         let (paths, errors) = scan_paths(&RELATIVE, &[root]);
 
@@ -784,7 +783,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn records_roots_replaced_with_symlinks_after_configuration_loads() {
-        use std::os::unix::fs as unix_fs;
+        use std::os::unix;
 
         let temp = tempfile::tempdir().unwrap();
         let replaced = temp.path().join("replaced");
@@ -794,7 +793,7 @@ mod tests {
         let roots = canonical_roots(slice::from_ref(&replaced));
         let expected_replaced = roots.first().as_path().to_owned();
         fs::remove_dir(&replaced).unwrap();
-        unix_fs::symlink(&outside, &replaced).unwrap();
+        unix::fs::symlink(&outside, &replaced).unwrap();
 
         let (paths, errors) = scan_with_roots(&RELATIVE, &roots);
 

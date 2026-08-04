@@ -3,7 +3,10 @@ use std::{io, sync::Arc, time::Duration};
 use prodash::{
     Progress,
     progress::{DoOrDiscard, key::Level},
-    render::line::{self, Options, StreamKind},
+    render::{
+        self,
+        line::{Options, StreamKind},
+    },
     tree::{Item, Root},
 };
 
@@ -80,7 +83,7 @@ impl ConsoleProgress {
                 let mut progress = DoOrDiscard::from(Some(task));
                 // The task must exist before the renderer starts to avoid its
                 // empty-tree startup race.
-                let renderer = line::render(io::stderr(), Arc::downgrade(&root), options);
+                let renderer = render::line(io::stderr(), Arc::downgrade(&root), options);
 
                 let result = operation(&mut progress);
                 // Operations such as gix fetch may repurpose the parent item

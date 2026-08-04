@@ -1,7 +1,9 @@
 use crate::{clone_destination::CloneDestination, non_empty_vec::NonEmptyVec};
 use std::{
-    error::Error,
-    fmt, fs, io,
+    error,
+    fmt::{self, Display, Formatter},
+    fs::{self, Metadata},
+    io::{self, ErrorKind},
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -54,7 +56,7 @@ impl DestinationTransaction {
                     );
                 }
             }
-            Err(source) if source.kind() == io::ErrorKind::AlreadyExists => {
+            Err(source) if source.kind() == ErrorKind::AlreadyExists => {
                 let path = transaction.destination.path().to_owned();
                 return Err(transaction.failure(DestinationError::Exists { path }));
             }
@@ -105,7 +107,7 @@ impl DestinationTransaction {
                         });
                     }
                 }
-                Err(source) if source.kind() == io::ErrorKind::AlreadyExists => {
+                Err(source) if source.kind() == ErrorKind::AlreadyExists => {
                     ensure_directory(parent, false)?;
                 }
                 Err(source) => {
@@ -163,8 +165,8 @@ impl DestinationTransaction {
 
             match fs::remove_dir(&parent.path) {
                 Ok(()) => {}
-                Err(source) if source.kind() == io::ErrorKind::NotFound => {}
-                Err(source) if source.kind() == io::ErrorKind::DirectoryNotEmpty => {}
+                Err(source) if source.kind() == ErrorKind::NotFound => {}
+                Err(source) if source.kind() == ErrorKind::DirectoryNotEmpty => {}
                 Err(source) => issues.push(CleanupIssue {
                     operation: "remove parent directory",
                     path: parent.path.clone(),
@@ -219,7 +221,7 @@ fn ensure_destination_absent(path: &Path) -> Result<(), DestinationError> {
         Ok(_) => Err(DestinationError::Exists {
             path: path.to_owned(),
         }),
-        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(source) if source.kind() == ErrorKind::NotFound => Ok(()),
         Err(source) => Err(DestinationError::Inspect {
             path: path.to_owned(),
             source,
@@ -260,7 +262,7 @@ impl OwnedDirectory {
         };
         let metadata = match fs::symlink_metadata(&self.path) {
             Ok(metadata) => metadata,
-            Err(source) if source.kind() == io::ErrorKind::NotFound => {
+            Err(source) if source.kind() == ErrorKind::NotFound => {
                 return Ok(OwnedEntryState::Missing);
             }
             Err(source) => return Err(source),
@@ -300,7 +302,7 @@ struct DirectoryIdentity {
 }
 
 impl DirectoryIdentity {
-    fn from_metadata(_path: &Path, metadata: &fs::Metadata) -> io::Result<Self> {
+    fn from_metadata(_path: &Path, metadata: &Metadata) -> io::Result<Self> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
@@ -438,8 +440,8 @@ pub(crate) struct CleanupError {
     issues: NonEmptyVec<CleanupIssue>,
 }
 
-impl fmt::Display for CleanupError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for CleanupError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         for (index, issue) in self.issues.iter().enumerate() {
             if index > 0 {
                 formatter.write_str("; ")?;
@@ -456,8 +458,8 @@ impl fmt::Display for CleanupError {
     }
 }
 
-impl Error for CleanupError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl error::Error for CleanupError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         Some(&self.issues.first().source)
     }
 }
@@ -607,11 +609,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_dangling_destination_symlink_is_still_considered_existing() {
-        use std::os::unix::fs as unix_fs;
+        use std::os::unix;
 
         let temp = tempfile::tempdir().unwrap();
         let destination = temp.path().join("repository");
-        unix_fs::symlink(temp.path().join("missing-target"), &destination).unwrap();
+        unix::fs::symlink(temp.path().join("missing-target"), &destination).unwrap();
 
         let result = DestinationTransaction::begin(explicit_destination(&destination));
 

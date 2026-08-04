@@ -1,5 +1,7 @@
 use std::{
-    fmt, fs, io,
+    fmt::{self, Display, Formatter},
+    fs,
+    io::Error,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -55,7 +57,7 @@ pub(crate) enum CanonicalDirError {
     Canonicalize {
         input: PathBuf,
         #[source]
-        source: io::Error,
+        source: Error,
     },
     #[error(
         "could not inspect {} (canonicalized to {})",
@@ -66,7 +68,7 @@ pub(crate) enum CanonicalDirError {
         input: PathBuf,
         canonical: PathBuf,
         #[source]
-        source: io::Error,
+        source: Error,
     },
     #[error("{} is not a directory", CanonicalizedPath(.input, .canonical))]
     NotDirectory { input: PathBuf, canonical: PathBuf },
@@ -74,8 +76,8 @@ pub(crate) enum CanonicalDirError {
 
 struct CanonicalizedPath<'a>(&'a Path, &'a Path);
 
-impl fmt::Display for CanonicalizedPath<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for CanonicalizedPath<'_> {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         if self.0 == self.1 {
             write!(formatter, "{}", self.0.display())
         } else {

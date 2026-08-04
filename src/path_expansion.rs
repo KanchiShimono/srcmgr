@@ -1,5 +1,8 @@
-use gix::config::{Path as ConfigPath, path::interpolate};
-use std::path::{Path, PathBuf};
+use gix::config::{
+    self,
+    path::interpolate::{self, Context, Error},
+};
+use std::path::{self, PathBuf};
 use thiserror::Error;
 
 type HomeForUser = fn(&str) -> Option<PathBuf>;
@@ -14,7 +17,7 @@ impl HomeDirectory {
             .ok_or(HomeDirectoryError)
     }
 
-    pub(crate) fn as_path(&self) -> &Path {
+    pub(crate) fn as_path(&self) -> &path::Path {
         &self.0
     }
 
@@ -25,26 +28,26 @@ impl HomeDirectory {
 }
 
 pub(crate) fn expand_git_path(
-    input: ConfigPath,
+    input: config::Path,
     home: &HomeDirectory,
 ) -> Result<PathBuf, PathExpansionError> {
     expand_git_path_with_user_lookup(input, home, interpolate::home_for_user)
 }
 
 fn expand_git_path_with_user_lookup(
-    input: ConfigPath,
+    input: config::Path,
     home: &HomeDirectory,
     home_for_user: HomeForUser,
 ) -> Result<PathBuf, PathExpansionError> {
     let path = input
-        .interpolate(interpolate::Context {
+        .interpolate(Context {
             git_install_dir: None,
             home_dir: Some(home.as_path()),
             home_for_user: Some(home_for_user),
         })
         .map_err(PathExpansionError)?;
 
-    if path == Path::new("~") {
+    if path == path::Path::new("~") {
         Ok(home.as_path().to_owned())
     } else {
         Ok(path)
@@ -57,23 +60,23 @@ pub(crate) struct HomeDirectoryError;
 
 #[derive(Debug, Error)]
 #[error("could not expand path")]
-pub(crate) struct PathExpansionError(#[source] interpolate::Error);
+pub(crate) struct PathExpansionError(#[source] Error);
 
 #[cfg(test)]
 mod tests {
     use super::{HomeDirectory, PathExpansionError};
     use gix::{
         bstr::BStr,
-        config::{Path as ConfigPath, path::interpolate},
+        config::{self, path::interpolate::Error},
     };
-    use std::path::{Path, PathBuf};
+    use std::path::{self, PathBuf};
 
     fn home_directory() -> HomeDirectory {
         HomeDirectory::from_path("current-home")
     }
 
-    fn config_path(input: &str) -> ConfigPath {
-        ConfigPath::from(input)
+    fn config_path(input: &str) -> config::Path {
+        config::Path::from(input)
     }
 
     fn alice_home_directory(user: &str) -> Option<PathBuf> {
@@ -129,7 +132,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(expanded, Path::new("~alice"));
+        assert_eq!(expanded, path::Path::new("~alice"));
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "android")))]
@@ -144,7 +147,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(expanded, Path::new("alice-home/src/repository"));
+        assert_eq!(expanded, path::Path::new("alice-home/src/repository"));
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "android")))]
@@ -159,10 +162,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(matches!(
-            error,
-            PathExpansionError(interpolate::Error::Missing { .. })
-        ));
+        assert!(matches!(error, PathExpansionError(Error::Missing { .. })));
     }
 
     #[cfg(any(target_os = "windows", target_os = "android"))]
@@ -179,7 +179,7 @@ mod tests {
 
         assert!(matches!(
             error,
-            PathExpansionError(interpolate::Error::UserInterpolationUnsupported)
+            PathExpansionError(Error::UserInterpolationUnsupported)
         ));
     }
 
@@ -190,7 +190,7 @@ mod tests {
         let expanded =
             super::expand_git_path(config_path("repositories/~/project"), &home).unwrap();
 
-        assert_eq!(expanded, Path::new("repositories/~/project"));
+        assert_eq!(expanded, path::Path::new("repositories/~/project"));
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod tests {
 
         let expanded = super::expand_git_path(config_path("src/repository"), &home).unwrap();
 
-        assert_eq!(expanded, Path::new("src/repository"));
+        assert_eq!(expanded, path::Path::new("src/repository"));
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
 
         for input in [r"~\src\repository", r"~alice\src\repository"] {
             let expanded = super::expand_git_path(config_path(input), &home).unwrap();
-            assert_eq!(expanded, Path::new(input));
+            assert_eq!(expanded, path::Path::new(input));
         }
     }
 
@@ -218,10 +218,7 @@ mod tests {
 
         let error = super::expand_git_path(config_path(""), &home).unwrap_err();
 
-        assert!(matches!(
-            error,
-            PathExpansionError(interpolate::Error::Missing { .. })
-        ));
+        assert!(matches!(error, PathExpansionError(Error::Missing { .. })));
     }
 
     #[test]
@@ -231,10 +228,7 @@ mod tests {
         let error =
             super::expand_git_path(config_path("%(prefix)/share/srcmgr"), &home).unwrap_err();
 
-        assert!(matches!(
-            error,
-            PathExpansionError(interpolate::Error::Missing { .. })
-        ));
+        assert!(matches!(error, PathExpansionError(Error::Missing { .. })));
     }
 
     #[cfg(unix)]
@@ -243,7 +237,7 @@ mod tests {
         use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
         let home = home_directory();
-        let input = ConfigPath::from(BStr::new(b"~/\xff"));
+        let input = config::Path::from(BStr::new(b"~/\xff"));
 
         let expanded = super::expand_git_path(input, &home).unwrap();
 
