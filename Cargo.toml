@@ -9,7 +9,7 @@ description = "Simple repository manager"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
-gix = { version = "0.86", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls", "comfort", "sha1", "worktree-mutation"] }
+gix = { version = "0.86", default-features = false, features = ["blocking-http-transport-reqwest-rust-tls", "comfort", "max-performance", "sha1", "worktree-mutation"] }
 prodash = { version = "31", default-features = false, features = ["progress-tree", "render-line", "render-line-crossterm", "render-line-autoconfigure"] }
 rustix = { version = "1", features = ["fs"] }
 thiserror = "2"
