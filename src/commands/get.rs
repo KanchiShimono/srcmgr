@@ -4,11 +4,14 @@ use crate::{
     },
     config::{Config, ConfigError},
     destination_transaction::{CleanupError, DestinationTransaction, DestinationTransactionError},
-    git_clone::{CloneError, clone_repository},
+    git_clone::{self, CloneError},
+    global_options::GlobalOptions,
     path_expansion::HomeDirectory,
+    progress::{ConsoleProgress, ProgressDetail},
     remote_repository::{RemoteRepository, RepositoryError},
 };
 use clap::Args;
+use gix::Url;
 use thiserror::Error;
 
 #[derive(Debug, Args)]
@@ -22,26 +25,32 @@ pub(crate) struct GetArgs {
     destination: Option<String>,
 }
 
-pub(crate) fn run(args: &GetArgs) -> anyhow::Result<()> {
+pub(crate) fn run(args: &GetArgs, global: &GlobalOptions) -> anyhow::Result<()> {
     // Configuration is deliberately loaded before any other validation, even
     // when an explicit destination was supplied.
     let home = HomeDirectory::discover()
         .map_err(ConfigError::from)
         .map_err(GetError::Config)?;
     let config = Config::load(&home).map_err(GetError::Config)?;
-    let plan = ClonePlan::parse(args, &config, &home)?;
+    let plan = ClonePlan::parse(args, &config, &home, global.progress_detail())?;
     run_clone_plan(plan)?;
     Ok(())
 }
 
 #[derive(Debug)]
 struct ClonePlan {
-    clone_url: gix::Url,
+    clone_url: Url,
     destination: CloneDestination,
+    progress_detail: ProgressDetail,
 }
 
 impl ClonePlan {
-    fn parse(args: &GetArgs, config: &Config, home: &HomeDirectory) -> Result<Self, GetError> {
+    fn parse(
+        args: &GetArgs,
+        config: &Config,
+        home: &HomeDirectory,
+        progress_detail: ProgressDetail,
+    ) -> Result<Self, GetError> {
         let repository = RemoteRepository::parse(&args.repository, config.user_name())?;
         let destination = match args.destination.as_deref() {
             Some(destination) => {
@@ -56,6 +65,7 @@ impl ClonePlan {
         Ok(Self {
             clone_url: repository.into_clone_url(),
             destination,
+            progress_detail,
         })
     }
 }
@@ -64,10 +74,15 @@ fn run_clone_plan(plan: ClonePlan) -> Result<(), GetError> {
     let ClonePlan {
         clone_url,
         destination,
+        progress_detail,
     } = plan;
     let transaction = DestinationTransaction::begin(destination)?;
+    let label = format!("Cloning into {}", transaction.path().display());
+    let progress = ConsoleProgress::for_stderr(progress_detail);
 
-    match clone_repository(clone_url, transaction.path()) {
+    match progress.run(label, |progress| {
+        git_clone::clone_repository(clone_url, transaction.path(), progress)
+    }) {
         Ok(()) => {
             transaction.commit();
             Ok(())
@@ -104,6 +119,7 @@ mod tests {
     use super::{ClonePlan, GetArgs};
     use crate::{
         clone_destination::CloneDestination, config::Config, path_expansion::HomeDirectory,
+        progress::ProgressDetail,
     };
     use clap::Parser;
     use std::{
@@ -181,7 +197,7 @@ mod tests {
             destination: None,
         };
 
-        let plan = ClonePlan::parse(&args, &config, &home).unwrap();
+        let plan = ClonePlan::parse(&args, &config, &home, ProgressDetail::Normal).unwrap();
 
         assert_eq!(
             plan.clone_url.to_bstring().as_slice(),
@@ -213,7 +229,7 @@ mod tests {
             destination: Some("checkout".to_owned()),
         };
 
-        let plan = ClonePlan::parse(&args, &config, &home).unwrap();
+        let plan = ClonePlan::parse(&args, &config, &home, ProgressDetail::Verbose).unwrap();
 
         assert_eq!(
             plan.clone_url.to_bstring().as_slice(),
@@ -221,5 +237,6 @@ mod tests {
         );
         assert_eq!(plan.destination.path(), Path::new("checkout"));
         assert!(matches!(plan.destination, CloneDestination::Explicit(_)));
+        assert_eq!(plan.progress_detail, ProgressDetail::Verbose);
     }
 }

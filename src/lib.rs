@@ -5,6 +5,8 @@ mod commands;
 mod config;
 mod destination_transaction;
 mod git_clone;
+mod global_options;
 mod non_empty_vec;
 mod path_expansion;
+mod progress;
 mod remote_repository;
