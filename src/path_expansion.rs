@@ -61,9 +61,7 @@ pub(crate) struct PathExpansionError(#[source] interpolate::Error);
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        HomeDirectory, PathExpansionError, expand_git_path, expand_git_path_with_user_lookup,
-    };
+    use super::{HomeDirectory, PathExpansionError};
     use gix::{
         bstr::BStr,
         config::{Path as ConfigPath, path::interpolate},
@@ -100,7 +98,7 @@ mod tests {
     fn a_bare_tilde_means_the_current_home_directory() {
         let home = home_directory();
 
-        let expanded = expand_git_path(config_path("~"), &home).unwrap();
+        let expanded = super::expand_git_path(config_path("~"), &home).unwrap();
 
         assert_eq!(expanded, home.as_path());
     }
@@ -109,7 +107,7 @@ mod tests {
     fn a_tilde_slash_prefix_is_relative_to_the_current_home_directory() {
         let home = home_directory();
 
-        let expanded = expand_git_path(config_path("~/src/repository"), &home).unwrap();
+        let expanded = super::expand_git_path(config_path("~/src/repository"), &home).unwrap();
 
         assert_eq!(expanded, home.as_path().join("src/repository"));
     }
@@ -118,7 +116,7 @@ mod tests {
     fn a_tilde_followed_only_by_slash_means_the_current_home_directory() {
         let home = home_directory();
 
-        let expanded = expand_git_path(config_path("~/"), &home).unwrap();
+        let expanded = super::expand_git_path(config_path("~/"), &home).unwrap();
 
         assert_eq!(expanded, home.as_path());
     }
@@ -127,7 +125,7 @@ mod tests {
     fn a_bare_named_user_is_left_unexpanded_to_match_gix() {
         let home = home_directory();
 
-        let expanded = expand_git_path_with_user_lookup(
+        let expanded = super::expand_git_path_with_user_lookup(
             config_path("~alice"),
             &home,
             unexpected_named_user_lookup,
@@ -142,7 +140,7 @@ mod tests {
     fn a_named_user_followed_by_slash_uses_the_named_users_home_directory() {
         let home = home_directory();
 
-        let expanded = expand_git_path_with_user_lookup(
+        let expanded = super::expand_git_path_with_user_lookup(
             config_path("~alice/src/repository"),
             &home,
             alice_home_directory,
@@ -157,7 +155,7 @@ mod tests {
     fn an_unknown_named_user_followed_by_slash_is_an_error() {
         let home = home_directory();
 
-        let error = expand_git_path_with_user_lookup(
+        let error = super::expand_git_path_with_user_lookup(
             config_path("~unknown/src/repository"),
             &home,
             missing_home_directory,
@@ -175,7 +173,7 @@ mod tests {
     fn named_user_expansion_is_an_error_on_unsupported_platforms() {
         let home = home_directory();
 
-        let error = expand_git_path_with_user_lookup(
+        let error = super::expand_git_path_with_user_lookup(
             config_path("~alice/src/repository"),
             &home,
             alice_home_directory,
@@ -192,7 +190,8 @@ mod tests {
     fn only_a_leading_tilde_is_considered_for_expansion() {
         let home = home_directory();
 
-        let expanded = expand_git_path(config_path("repositories/~/project"), &home).unwrap();
+        let expanded =
+            super::expand_git_path(config_path("repositories/~/project"), &home).unwrap();
 
         assert_eq!(expanded, Path::new("repositories/~/project"));
     }
@@ -201,7 +200,7 @@ mod tests {
     fn an_ordinary_relative_path_is_left_unchanged() {
         let home = home_directory();
 
-        let expanded = expand_git_path(config_path("src/repository"), &home).unwrap();
+        let expanded = super::expand_git_path(config_path("src/repository"), &home).unwrap();
 
         assert_eq!(expanded, Path::new("src/repository"));
     }
@@ -211,7 +210,7 @@ mod tests {
         let home = home_directory();
 
         for input in [r"~\src\repository", r"~alice\src\repository"] {
-            let expanded = expand_git_path(config_path(input), &home).unwrap();
+            let expanded = super::expand_git_path(config_path(input), &home).unwrap();
             assert_eq!(expanded, Path::new(input));
         }
     }
@@ -220,7 +219,7 @@ mod tests {
     fn an_empty_git_path_is_an_interpolation_error() {
         let home = home_directory();
 
-        let error = expand_git_path(config_path(""), &home).unwrap_err();
+        let error = super::expand_git_path(config_path(""), &home).unwrap_err();
 
         assert!(matches!(
             error,
@@ -232,7 +231,8 @@ mod tests {
     fn a_git_install_prefix_requires_an_install_directory() {
         let home = home_directory();
 
-        let error = expand_git_path(config_path("%(prefix)/share/srcmgr"), &home).unwrap_err();
+        let error =
+            super::expand_git_path(config_path("%(prefix)/share/srcmgr"), &home).unwrap_err();
 
         assert!(matches!(
             error,
@@ -248,7 +248,7 @@ mod tests {
         let home = home_directory();
         let input = ConfigPath::from(Cow::Borrowed(BStr::new(b"~/\xff")));
 
-        let expanded = expand_git_path(input, &home).unwrap();
+        let expanded = super::expand_git_path(input, &home).unwrap();
 
         assert_eq!(expanded, home.as_path().join(OsStr::from_bytes(b"\xff")));
     }

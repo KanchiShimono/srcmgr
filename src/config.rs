@@ -1,7 +1,7 @@
 use crate::{
     canonical_dir::{CanonicalDir, CanonicalDirError},
     non_empty_vec::NonEmptyVec,
-    path_expansion::{HomeDirectory, HomeDirectoryError, PathExpansionError, expand_git_path},
+    path_expansion::{self, HomeDirectory, HomeDirectoryError, PathExpansionError},
 };
 use gix::config::{File, Path as ConfigPath, Source};
 use std::{collections::HashSet, str::Utf8Error};
@@ -41,7 +41,8 @@ impl Config {
             .unwrap_or_default()
             .into_iter()
             .map(|root| {
-                expand_git_path(ConfigPath::from(root), home).map_err(ConfigError::InterpolateRoot)
+                path_expansion::expand_git_path(ConfigPath::from(root), home)
+                    .map_err(ConfigError::InterpolateRoot)
             })
             .collect::<Result<Vec<_>, ConfigError>>()?;
         let mut roots = root_paths
@@ -88,7 +89,6 @@ mod tests {
         fs,
         path::{Path, PathBuf},
     };
-    use tempfile::tempdir;
 
     fn root_paths(config: &Config) -> Vec<PathBuf> {
         config
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn reads_srcmgr_roots() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let first = temp.path().join("first");
         let second = temp.path().join("second");
         fs::create_dir(&first).unwrap();
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn expands_home_directory_in_roots() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let home = temp.path();
         fs::create_dir_all(home.join("dev/src")).unwrap();
         fs::create_dir_all(home.join(".local/share/repositories")).unwrap();
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn expands_a_bare_tilde_to_the_home_directory() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let file = File::try_from("[srcmgr]\nroot = ~\n").unwrap();
 
         let config = Config::from_file(&file, temp.path()).unwrap();
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn rejects_empty_root_paths() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let file = File::try_from("[srcmgr]\nroot =\n").unwrap();
 
         let error = Config::from_file(&file, temp.path()).unwrap_err();
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_root_paths() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let missing = temp.path().join("missing");
         let source = format!("[srcmgr]\nroot = {}\n", config_path(&missing));
         let file = File::try_from(source.as_str()).unwrap();
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn rejects_root_paths_that_are_not_directories() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("file");
         fs::write(&path, "not a directory").unwrap();
         let source = format!("[srcmgr]\nroot = {}\n", config_path(&path));
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn rejects_user_names_that_are_not_valid_utf8() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         fs::create_dir(&root).unwrap();
         let mut source =
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn rejects_all_roots_when_any_root_is_invalid() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let valid = temp.path().join("valid");
         let missing = temp.path().join("missing");
         fs::create_dir(&valid).unwrap();
@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn removes_duplicates_after_canonicalization_while_preserving_order() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let first = temp.path().join("first");
         let second = temp.path().join("second");
         fs::create_dir_all(first.join("child")).unwrap();
@@ -278,13 +278,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn removes_symlink_duplicates_after_canonicalization() {
-        use std::os::unix::fs::symlink;
-
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let alias = temp.path().join("alias");
         fs::create_dir(&root).unwrap();
-        symlink(&root, &alias).unwrap();
+        std::os::unix::fs::symlink(&root, &alias).unwrap();
         let source = format!(
             "[srcmgr]\nroot = {}\nroot = {}\n",
             config_path(&alias),

@@ -1,6 +1,6 @@
 use anyhow::Result;
-use srcmgr::cli::cli_main;
+use srcmgr::cli;
 
 fn main() -> Result<()> {
-    cli_main()
+    cli::cli_main()
 }

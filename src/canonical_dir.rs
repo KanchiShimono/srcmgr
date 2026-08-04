@@ -93,11 +93,10 @@ impl fmt::Display for CanonicalizedPath<'_> {
 mod tests {
     use super::{CanonicalDir, CanonicalDirError};
     use std::{fs, path::PathBuf};
-    use tempfile::tempdir;
 
     #[test]
     fn canonicalizes_directories_and_converts_back_to_path_buf() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let directory = temp.path().join("directory");
         let child = directory.join("child");
         fs::create_dir_all(&child).unwrap();
@@ -111,7 +110,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_paths() {
-        let path = tempdir().unwrap().path().join("missing");
+        let path = tempfile::tempdir().unwrap().path().join("missing");
 
         let error = CanonicalDir::try_from(path).unwrap_err();
 
@@ -120,7 +119,7 @@ mod tests {
 
     #[test]
     fn rejects_non_directories() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("file");
         fs::write(&path, "not a directory").unwrap();
 

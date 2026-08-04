@@ -126,7 +126,6 @@ mod tests {
         fs,
         path::{Path, PathBuf},
     };
-    use tempfile::tempdir;
 
     #[derive(Parser)]
     struct Options {
@@ -181,7 +180,7 @@ mod tests {
 
     #[test]
     fn an_omitted_destination_uses_the_first_root_and_configured_user_name() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let home = HomeDirectory::from_path(temp.path());
         let first_root = temp.path().join("first-root");
         let second_root = temp.path().join("second-root");
@@ -219,7 +218,7 @@ mod tests {
 
     #[test]
     fn an_explicit_destination_is_used_without_appending_remote_components() {
-        let temp = tempdir().unwrap();
+        let temp = tempfile::tempdir().unwrap();
         let home = HomeDirectory::from_path(temp.path());
         let root = temp.path().join("root");
         fs::create_dir(&root).unwrap();
