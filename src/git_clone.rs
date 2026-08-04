@@ -1,25 +1,44 @@
-use std::{error::Error, fmt, path::Path, sync::atomic::AtomicBool};
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    path::Path,
+    sync::atomic::AtomicBool,
+};
+
+use gix::{
+    NestedProgress, Url,
+    clone::PrepareFetch,
+    create::{self, Kind},
+    open,
+};
 use thiserror::Error;
 
-pub(crate) fn clone_repository(url: gix::Url, destination: &Path) -> Result<(), CloneError> {
-    let create_options = gix::create::Options {
+pub(crate) fn clone_repository<P>(
+    url: Url,
+    destination: &Path,
+    progress: &mut P,
+) -> Result<(), CloneError>
+where
+    P: NestedProgress,
+    P::SubProgress: 'static,
+{
+    let create_options = create::Options {
         destination_must_be_empty: Some(true),
         ..Default::default()
     };
     // Unlike gix::prepare_clone(), the default open options do not ask gix to
     // invoke the Git binary to obtain installation configuration.
-    let mut prepare = gix::clone::PrepareFetch::new(
+    let mut prepare = PrepareFetch::new(
         url,
         destination,
-        gix::create::Kind::WithWorktree,
+        Kind::WithWorktree,
         create_options,
-        gix::open::Options::default(),
+        open::Options::default(),
     )
     .map_err(|source| CloneError(CloneErrorKind::Prepare(ErrorSnapshot::capture(&source))))?;
 
     let interrupted = AtomicBool::new(false);
-    let (mut checkout, _) = match prepare.fetch_then_checkout(gix::progress::Discard, &interrupted)
-    {
+    let (mut checkout, _) = match prepare.fetch_then_checkout(&mut *progress, &interrupted) {
         Ok(prepared) => prepared,
         Err(source) => {
             let source = CloneError(CloneErrorKind::Fetch(ErrorSnapshot::capture(&source)));
@@ -30,7 +49,7 @@ pub(crate) fn clone_repository(url: gix::Url, destination: &Path) -> Result<(), 
         }
     };
 
-    match checkout.main_worktree(gix::progress::Discard, &interrupted) {
+    match checkout.main_worktree(&mut *progress, &interrupted) {
         Ok((repository, _)) => {
             drop(repository);
             Ok(())
@@ -73,8 +92,8 @@ impl ErrorSnapshot {
     }
 }
 
-impl fmt::Display for ErrorSnapshot {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for ErrorSnapshot {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.0)
     }
 }

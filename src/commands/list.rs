@@ -1,13 +1,15 @@
 use crate::{
     canonical_dir::CanonicalDir,
     config::{Config, ConfigError},
+    global_options::GlobalOptions,
     non_empty_vec::NonEmptyVec,
     path_expansion::HomeDirectory,
 };
 use clap::Args;
+use gix::discover::path::{self as git_path, from_gitdir_file::Error as GitFileError};
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, ErrorKind, Write},
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -24,7 +26,7 @@ pub(crate) struct ListArgs {
     nested: bool,
 }
 
-pub(crate) fn run(args: &ListArgs) -> anyhow::Result<()> {
+pub(crate) fn run(args: &ListArgs, _global: &GlobalOptions) -> anyhow::Result<()> {
     let home = HomeDirectory::discover()
         .map_err(ConfigError::from)
         .map_err(ListError::Config)?;
@@ -145,7 +147,7 @@ fn is_repository(path: &Path, errors: &mut Vec<ListDiagnostic>) -> bool {
         let marker = path.join(name);
         match fs::metadata(&marker) {
             Ok(metadata) => found |= metadata.is_dir(),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
             Err(source) => errors.push(ListDiagnostic::InspectRepositoryMarker {
                 path: marker,
                 source,
@@ -160,7 +162,7 @@ fn is_git_repository(path: &Path) -> Result<bool, GitRepositoryError> {
     let marker = path.join(".git");
     let metadata = match fs::metadata(&marker) {
         Ok(metadata) => metadata,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
         Err(source) => {
             return Err(GitRepositoryError::InspectMarker {
                 path: marker,
@@ -176,7 +178,7 @@ fn is_git_repository(path: &Path) -> Result<bool, GitRepositoryError> {
         return Err(GitRepositoryError::InvalidMarkerType { path: marker });
     }
 
-    let git_dir = gix::discover::path::from_gitdir_file(&marker).map_err(|source| {
+    let git_dir = git_path::from_gitdir_file(&marker).map_err(|source| {
         GitRepositoryError::InvalidGitFile {
             path: marker.clone(),
             source,
@@ -254,7 +256,7 @@ enum GitRepositoryError {
     InvalidGitFile {
         path: PathBuf,
         #[source]
-        source: gix::discover::path::from_gitdir_file::Error,
+        source: GitFileError,
     },
     #[error("{} is not a directory", path.display())]
     GitDirectoryNotDirectory { path: PathBuf },
@@ -273,14 +275,15 @@ enum GitRepositoryError {
 
 #[cfg(test)]
 mod tests {
-    use super::{GitRepositoryError, ListArgs, ListDiagnostic, ListError, run_with_io, scan};
+    use super::{GitRepositoryError, ListArgs, ListDiagnostic, ListError};
     use crate::{canonical_dir::CanonicalDir, non_empty_vec::NonEmptyVec};
     use clap::Parser;
     use std::{
         convert::Infallible,
         fs,
-        io::{self, Write},
+        io::{self, Error, ErrorKind, Write},
         path::{Path, PathBuf},
+        slice,
     };
     use tempfile::tempdir;
 
@@ -331,7 +334,7 @@ mod tests {
     ) -> (Result<(), ListError>, String, String) {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let result = run_with_io(args, roots, &mut stdout, &mut stderr);
+        let result = super::run_with_io(args, roots, &mut stdout, &mut stderr);
         (
             result,
             String::from_utf8(stdout).unwrap(),
@@ -349,7 +352,7 @@ mod tests {
         roots: &NonEmptyVec<CanonicalDir>,
     ) -> (Vec<PathBuf>, Vec<ListDiagnostic>) {
         let mut paths = Vec::new();
-        let errors = scan(args, roots, |path| {
+        let errors = super::scan(args, roots, |path| {
             paths.push(path.to_owned());
             Ok::<(), Infallible>(())
         })
@@ -385,10 +388,7 @@ mod tests {
 
     impl Write for WriteFailure {
         fn write(&mut self, _bytes: &[u8]) -> io::Result<usize> {
-            Err(io::Error::new(
-                io::ErrorKind::BrokenPipe,
-                "injected write failure",
-            ))
+            Err(Error::new(ErrorKind::BrokenPipe, "injected write failure"))
         }
 
         fn flush(&mut self) -> io::Result<()> {
@@ -431,14 +431,14 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn ignores_directory_symlinks_below_roots() {
-        use std::os::unix::fs::symlink;
+        use std::os::unix::fs as unix_fs;
 
         let temp = tempdir().unwrap();
         let root = temp.path().join("root");
         let outside = temp.path().join("outside");
         repository(&root.join("direct"), ".git");
         repository(&outside.join("linked"), ".git");
-        symlink(&outside, root.join("directory-link")).unwrap();
+        unix_fs::symlink(&outside, root.join("directory-link")).unwrap();
 
         let (paths, errors) = scan_paths(&RELATIVE, &[root]);
 
@@ -609,9 +609,9 @@ mod tests {
             },
         };
         let mut stderr = Vec::new();
-        let roots = canonical_roots(std::slice::from_ref(&root));
+        let roots = canonical_roots(slice::from_ref(&root));
 
-        run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr).unwrap();
+        super::run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr).unwrap();
 
         assert_eq!(
             String::from_utf8(stdout.visible).unwrap(),
@@ -624,16 +624,16 @@ mod tests {
         let temp = tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("repository"), ".git");
-        let roots = canonical_roots(std::slice::from_ref(&root));
+        let roots = canonical_roots(slice::from_ref(&root));
         let mut stdout = WriteFailure;
         let mut stderr = Vec::new();
 
-        let result = run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr);
+        let result = super::run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr);
 
         assert!(matches!(
             result,
             Err(ListError::WriteRepositoryPath(source))
-                if source.kind() == io::ErrorKind::BrokenPipe
+                if source.kind() == ErrorKind::BrokenPipe
         ));
     }
 
@@ -642,26 +642,21 @@ mod tests {
         let temp = tempdir().unwrap();
         let root = temp.path().join("root");
         repository(&root.join("repository"), ".git");
-        let roots = canonical_roots(std::slice::from_ref(&root));
+        let roots = canonical_roots(slice::from_ref(&root));
         let mut stdout = BufferedOutput {
             pending: Vec::new(),
             visible: Vec::new(),
             lines: 0,
-            action: |_| {
-                Err(io::Error::new(
-                    io::ErrorKind::BrokenPipe,
-                    "injected flush failure",
-                ))
-            },
+            action: |_| Err(Error::new(ErrorKind::BrokenPipe, "injected flush failure")),
         };
         let mut stderr = Vec::new();
 
-        let result = run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr);
+        let result = super::run_with_io(&RELATIVE, &roots, &mut stdout, &mut stderr);
 
         assert!(matches!(
             result,
             Err(ListError::FlushRepositoryPath(source))
-                if source.kind() == io::ErrorKind::BrokenPipe
+                if source.kind() == ErrorKind::BrokenPipe
         ));
     }
 
@@ -670,17 +665,17 @@ mod tests {
         let temp = tempdir().unwrap();
         let removed = temp.path().join("removed");
         fs::create_dir(&removed).unwrap();
-        let roots = canonical_roots(std::slice::from_ref(&removed));
+        let roots = canonical_roots(slice::from_ref(&removed));
         fs::remove_dir(&removed).unwrap();
         let mut stdout = Vec::new();
         let mut stderr = WriteFailure;
 
-        let result = run_with_io(&DEFAULT, &roots, &mut stdout, &mut stderr);
+        let result = super::run_with_io(&DEFAULT, &roots, &mut stdout, &mut stderr);
 
         assert!(matches!(
             result,
             Err(ListError::WriteDiagnostic(source))
-                if source.kind() == io::ErrorKind::BrokenPipe
+                if source.kind() == ErrorKind::BrokenPipe
         ));
     }
 
@@ -736,7 +731,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let removed = temp.path().join("removed");
         fs::create_dir(&removed).unwrap();
-        let roots = canonical_roots(std::slice::from_ref(&removed));
+        let roots = canonical_roots(slice::from_ref(&removed));
         let canonical = roots.iter().next().unwrap().as_path().to_owned();
         fs::remove_dir(&removed).unwrap();
 
@@ -772,7 +767,7 @@ mod tests {
         let temp = tempdir().unwrap();
         let replaced = temp.path().join("replaced");
         fs::create_dir(&replaced).unwrap();
-        let roots = canonical_roots(std::slice::from_ref(&replaced));
+        let roots = canonical_roots(slice::from_ref(&replaced));
         let expected_replaced = roots.first().as_path().to_owned();
         fs::remove_dir(&replaced).unwrap();
         fs::write(&replaced, "not a directory").unwrap();
@@ -790,17 +785,17 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn records_roots_replaced_with_symlinks_after_configuration_loads() {
-        use std::os::unix::fs::symlink;
+        use std::os::unix::fs as unix_fs;
 
         let temp = tempdir().unwrap();
         let replaced = temp.path().join("replaced");
         let outside = temp.path().join("outside");
         fs::create_dir(&replaced).unwrap();
         repository(&outside.join("repository"), ".git");
-        let roots = canonical_roots(std::slice::from_ref(&replaced));
+        let roots = canonical_roots(slice::from_ref(&replaced));
         let expected_replaced = roots.first().as_path().to_owned();
         fs::remove_dir(&replaced).unwrap();
-        symlink(&outside, &replaced).unwrap();
+        unix_fs::symlink(&outside, &replaced).unwrap();
 
         let (paths, errors) = scan_with_roots(&RELATIVE, &roots);
 
@@ -820,7 +815,7 @@ mod tests {
         fs::create_dir_all(&malformed).unwrap();
         fs::write(malformed.join(".git"), "not a gitdir").unwrap();
         repository(&root.join("valid"), ".svn");
-        let roots = canonical_roots(std::slice::from_ref(&root));
+        let roots = canonical_roots(slice::from_ref(&root));
         let expected_malformed = roots.iter().next().unwrap().as_path().join("malformed");
 
         let (paths, errors) = scan_with_roots(&RELATIVE, &roots);
@@ -844,7 +839,7 @@ mod tests {
         fs::create_dir_all(unreadable.join("child")).unwrap();
         repository(&root.join("zeta"), ".git");
         let mut repositories = Vec::new();
-        let roots = canonical_roots(std::slice::from_ref(&root));
+        let roots = canonical_roots(slice::from_ref(&root));
         let expected_unreadable = roots
             .iter()
             .next()
@@ -852,12 +847,12 @@ mod tests {
             .as_path()
             .join("middle-unreadable");
 
-        let errors = scan(&RELATIVE, &roots, |path| {
+        let errors = super::scan(&RELATIVE, &roots, |path| {
             repositories.push(path.to_owned());
             if path == Path::new("alpha") {
                 fs::remove_dir_all(&unreadable)?;
             }
-            Ok::<(), io::Error>(())
+            Ok::<(), Error>(())
         })
         .unwrap();
 
