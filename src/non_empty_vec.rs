@@ -1,4 +1,4 @@
-use std::{slice::Iter, vec::IntoIter};
+use std::{iter, slice::Iter, vec::IntoIter};
 use thiserror::Error;
 
 /// A vector with at least one element.
@@ -13,7 +13,7 @@ impl<T> NonEmptyVec<T> {
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
-        std::iter::once(self.first()).chain(self.0[1..].iter())
+        iter::once(self.first()).chain(self.0[1..].iter())
     }
 }
 

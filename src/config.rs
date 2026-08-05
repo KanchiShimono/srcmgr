@@ -283,11 +283,13 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn removes_symlink_duplicates_after_canonicalization() {
+        use std::os::unix;
+
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("root");
         let alias = temp.path().join("alias");
         fs::create_dir(&root).unwrap();
-        std::os::unix::fs::symlink(&root, &alias).unwrap();
+        unix::fs::symlink(&root, &alias).unwrap();
         let source = format!(
             "[srcmgr]\nroot = {}\nroot = {}\n",
             config_path(&alias),

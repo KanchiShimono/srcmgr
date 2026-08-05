@@ -1,6 +1,9 @@
-use gix::config::{
-    self,
-    path::interpolate::{self, Context, Error},
+use gix::{
+    config::{
+        self,
+        path::interpolate::{self, Context, Error},
+    },
+    path::env,
 };
 use std::path::{self, PathBuf};
 use thiserror::Error;
@@ -12,9 +15,7 @@ pub(crate) struct HomeDirectory(PathBuf);
 
 impl HomeDirectory {
     pub(crate) fn discover() -> Result<Self, HomeDirectoryError> {
-        gix::path::env::home_dir()
-            .map(Self)
-            .ok_or(HomeDirectoryError)
+        env::home_dir().map(Self).ok_or(HomeDirectoryError)
     }
 
     pub(crate) fn as_path(&self) -> &path::Path {
