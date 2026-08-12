@@ -10,7 +10,7 @@ use gix::discover::path;
 use std::{
     fs,
     io::{self, ErrorKind, Write},
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, StripPrefixError},
 };
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -46,6 +46,10 @@ fn run_with_io(
     let errors = scan(args, roots, |path| {
         writeln!(stdout, "{}", path.display()).map_err(ListError::WriteRepositoryPath)?;
         stdout.flush().map_err(ListError::FlushRepositoryPath)
+    })
+    .map_err(|error| match error {
+        ScanError::ReportRepository(source) => source,
+        ScanError::RelativePath(source) => ListError::RelativePath(source),
     })?;
 
     for error in &errors {
@@ -64,8 +68,8 @@ fn run_with_io(
 fn scan<E>(
     args: &ListArgs,
     roots: &NonEmptyVec<CanonicalDir>,
-    mut found: impl FnMut(&Path) -> Result<(), E>,
-) -> Result<Vec<ListDiagnostic>, E> {
+    mut report_repository: impl FnMut(&Path) -> Result<(), E>,
+) -> Result<Vec<ListDiagnostic>, ScanError<E>> {
     let mut errors = Vec::new();
 
     for root in roots.iter() {
@@ -108,19 +112,11 @@ fn scan<E>(
             }
 
             let path = if args.relative {
-                let path = entry
-                    .path()
-                    .strip_prefix(root)
-                    .expect("walked paths are below their root");
-                if path.as_os_str().is_empty() {
-                    PathBuf::from(".")
-                } else {
-                    path.to_owned()
-                }
+                relative_repository_path(root, entry.path())?
             } else {
                 entry.path().to_owned()
             };
-            found(&path)?;
+            report_repository(&path).map_err(ScanError::ReportRepository)?;
 
             if !args.nested {
                 entries.skip_current_dir();
@@ -129,6 +125,22 @@ fn scan<E>(
     }
 
     Ok(errors)
+}
+
+fn relative_repository_path(root: &Path, path: &Path) -> Result<PathBuf, RelativePathError> {
+    let relative = path
+        .strip_prefix(root)
+        .map_err(|source| RelativePathError {
+            root: root.to_owned(),
+            path: path.to_owned(),
+            source,
+        })?;
+
+    if relative.as_os_str().is_empty() {
+        Ok(PathBuf::from("."))
+    } else {
+        Ok(relative.to_owned())
+    }
 }
 
 fn is_repository(path: &Path, errors: &mut Vec<ListDiagnostic>) -> bool {
@@ -204,8 +216,31 @@ enum ListError {
     FlushRepositoryPath(#[source] io::Error),
     #[error("could not write diagnostic")]
     WriteDiagnostic(#[source] io::Error),
+    #[error(transparent)]
+    RelativePath(#[from] RelativePathError),
     #[error("encountered {count} error(s) while listing repositories")]
     ScanFailed { count: usize },
+}
+
+#[derive(Debug, Error)]
+enum ScanError<E> {
+    #[error("could not report a discovered repository")]
+    ReportRepository(#[source] E),
+    #[error(transparent)]
+    RelativePath(#[from] RelativePathError),
+}
+
+#[derive(Debug, Error)]
+#[error(
+    "walk returned {} outside management root {}",
+    path.display(),
+    root.display()
+)]
+struct RelativePathError {
+    root: PathBuf,
+    path: PathBuf,
+    #[source]
+    source: StripPrefixError,
 }
 
 #[derive(Debug, Error)]
@@ -274,7 +309,7 @@ enum GitRepositoryError {
 
 #[cfg(test)]
 mod tests {
-    use super::{GitRepositoryError, ListArgs, ListDiagnostic, ListError};
+    use super::{GitRepositoryError, ListArgs, ListDiagnostic, ListError, RelativePathError};
     use crate::{canonical_dir::CanonicalDir, non_empty_vec::NonEmptyVec};
     use clap::Parser;
     use std::{
@@ -306,6 +341,23 @@ mod tests {
 
     fn parse(options: &[&str]) -> ListArgs {
         Options::parse_from(["list"].into_iter().chain(options.iter().copied())).list
+    }
+
+    #[test]
+    fn rejects_repository_paths_outside_management_roots() {
+        let root = PathBuf::from("root");
+        let path = PathBuf::from("outside/repository");
+
+        let error = super::relative_repository_path(&root, &path).unwrap_err();
+
+        assert!(matches!(
+            error,
+            RelativePathError {
+                root: error_root,
+                path: error_path,
+                ..
+            } if error_root == root && error_path == path
+        ));
     }
 
     fn repository(path: &Path, marker: &str) {
