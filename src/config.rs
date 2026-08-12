@@ -57,7 +57,7 @@ impl Config {
             .map_err(ConfigError::InvalidRoot)?;
         let mut seen = HashSet::new();
         roots.retain(|root| seen.insert(root.clone()));
-        let roots = NonEmptyVec::try_from(roots).map_err(|_| ConfigError::MissingRoot)?;
+        let roots = NonEmptyVec::try_from(roots).map_err(|_error| ConfigError::MissingRoot)?;
 
         let user_name = config
             .string("user.name")
