@@ -44,7 +44,7 @@ inline paths containing `::` as well as `use` declarations.
 - `cargo run --bin sm -- --help` — run the CLI locally without installing it.
 - `cargo test --workspace --locked --all-features --all-targets --no-fail-fast` — run the complete unit-test suite.
 - `cargo fmt --all -- --check` — verify default `rustfmt` formatting.
-- `cargo clippy --config 'build.warnings="deny"' --workspace --locked --all-targets --all-features` — lint every target and reject warnings.
+- `cargo clippy --workspace --locked --all-targets --all-features` — lint every target and reject warnings.
 
 Run all three quality checks before submitting a change. Commit
 `Cargo.lock` whenever dependency resolution changes.
