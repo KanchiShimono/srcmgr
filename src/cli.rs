@@ -1,8 +1,14 @@
-use std::io;
+#[cfg(unix)]
+use std::io::ErrorKind;
+use std::io::{self, Write};
 
-use anyhow::Result;
-use clap::{Args, CommandFactory, Parser, Subcommand};
+use anyhow::{Context, Result};
+use clap::{Args, Command, CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
+#[cfg(unix)]
+use signal_hook::consts::SIGPIPE;
+#[cfg(unix)]
+use signal_hook::low_level;
 
 use crate::{
     commands::{
@@ -73,17 +79,73 @@ struct CompletionArgs {
     shell: Shell,
 }
 
+impl CompletionArgs {
+    fn generate<W: Write>(&self, command: &mut Command, writer: &mut W) -> io::Result<()> {
+        let mut buffer = Vec::new();
+        clap_complete::generate(
+            self.shell,
+            command,
+            command.get_name().to_string(),
+            &mut buffer,
+        );
+
+        writer.write_all(&buffer)
+    }
+}
+
 fn run_completion(args: &CompletionArgs, _global: &GlobalOptions) -> Result<()> {
-    let mut app = Cli::command();
-    clap_complete::generate(args.shell, &mut app, "sm", &mut io::stdout());
-    Ok(())
+    let mut command = Cli::command();
+    execute_completion(args, &mut command, &mut io::stdout())
+}
+
+fn execute_completion<W: Write>(
+    completion: &CompletionArgs,
+    command: &mut Command,
+    writer: &mut W,
+) -> Result<()> {
+    match completion.generate(command, writer) {
+        Ok(()) => Ok(()),
+        #[cfg(unix)]
+        Err(error) if error.kind() == ErrorKind::BrokenPipe => terminate_with_sigpipe(),
+        Err(error) => Err(error).context("failed to write shell completion script"),
+    }
+}
+
+#[cfg(unix)]
+fn terminate_with_sigpipe() -> Result<()> {
+    low_level::emulate_default_handler(SIGPIPE)
+        .context("failed to emulate the default SIGPIPE action")?;
+    unreachable!("the default SIGPIPE action should terminate the process")
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Cli, Commands};
+    #[cfg(unix)]
+    use std::env;
+    use std::io::{self, Error, ErrorKind, Write};
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
+    #[cfg(unix)]
+    use std::process::Command;
+
+    use super::{Cli, Commands, CompletionArgs};
     use crate::{global_options::GlobalOptions, progress::ProgressDetail};
     use clap::{CommandFactory, Parser};
+    use clap_complete::Shell;
+    #[cfg(unix)]
+    use signal_hook::consts::SIGPIPE;
+
+    struct FailingWriter(ErrorKind);
+
+    impl Write for FailingWriter {
+        fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
+            Err(Error::from(self.0))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
 
     fn parse(arguments: &[&str]) -> Cli {
         Cli::parse_from(["sm"].into_iter().chain(arguments.iter().copied()))
@@ -143,5 +205,65 @@ mod tests {
 
         assert_eq!(detail, ProgressDetail::Normal);
         assert!(matches!(cli.command, Commands::Get(_)));
+    }
+
+    #[test]
+    fn completion_returns_regular_writer_error() {
+        let error_kind = if cfg!(unix) {
+            ErrorKind::StorageFull
+        } else {
+            ErrorKind::BrokenPipe
+        };
+        let completion = CompletionArgs { shell: Shell::Bash };
+        let mut command = Cli::command();
+        let mut writer = FailingWriter(error_kind);
+
+        let error = super::execute_completion(&completion, &mut command, &mut writer).unwrap_err();
+
+        assert_eq!(
+            error.downcast_ref::<Error>().map(Error::kind),
+            Some(error_kind)
+        );
+        assert!(
+            error
+                .to_string()
+                .contains("failed to write shell completion script")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn completion_broken_pipe_terminates_with_sigpipe() {
+        let output = Command::new(env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "cli::tests::completion_broken_pipe_subprocess",
+                "--ignored",
+            ])
+            .env("SRCMGR_TEST_BROKEN_PIPE", "1")
+            .output()
+            .unwrap();
+
+        assert_eq!(output.status.signal(), Some(SIGPIPE));
+        assert!(
+            output.stderr.is_empty(),
+            "stderr should be empty: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    #[ignore = "subprocess helper"]
+    fn completion_broken_pipe_subprocess() {
+        if env::var("SRCMGR_TEST_BROKEN_PIPE").as_deref() != Ok("1") {
+            return;
+        }
+
+        let completion = CompletionArgs { shell: Shell::Bash };
+        let mut command = Cli::command();
+        let mut writer = FailingWriter(ErrorKind::BrokenPipe);
+
+        super::execute_completion(&completion, &mut command, &mut writer).unwrap();
     }
 }
