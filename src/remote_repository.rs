@@ -137,20 +137,18 @@ impl ShorthandRepository {
             return Ok(None);
         }
 
-        let mut components = input.split('/');
-        let first = components.next().expect("split always yields one item");
-        let second = components.next();
-        let third = components.next();
-
-        match (second, third) {
-            (None, None) => Ok(Some(Self::CurrentUser {
-                repository: RepositoryName::parse(first)?,
-            })),
-            (Some(repository), None) => Ok(Some(Self::Owned {
-                owner: GithubOwner::parse(first)?,
+        let Some((owner, repository)) = input.split_once('/') else {
+            return Ok(Some(Self::CurrentUser {
+                repository: RepositoryName::parse(input)?,
+            }));
+        };
+        if repository.contains('/') {
+            Ok(None)
+        } else {
+            Ok(Some(Self::Owned {
+                owner: GithubOwner::parse(owner)?,
                 repository: RepositoryName::parse(repository)?,
-            })),
-            _ => Ok(None),
+            }))
         }
     }
 }
@@ -173,7 +171,7 @@ impl GithubOwner {
             .chars()
             .filter(|character| !character.is_whitespace())
             .collect::<String>();
-        Self::parse(&owner).map_err(|_| RepositoryError::InvalidUserName)
+        Self::parse(&owner).map_err(|_error| RepositoryError::InvalidUserName)
     }
 
     fn as_str(&self) -> &str {
@@ -272,7 +270,7 @@ fn destination_path(
             SafePathComponent::new(component).map_err(RepositoryError::InvalidRemotePath)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    NonEmptyVec::try_from(components).map_err(|_| RepositoryError::MissingRepositoryPath)
+    NonEmptyVec::try_from(components).map_err(|_error| RepositoryError::MissingRepositoryPath)
 }
 
 #[derive(Debug, Error)]

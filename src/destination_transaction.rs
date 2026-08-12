@@ -4,6 +4,7 @@ use std::{
     fmt::{self, Display, Formatter},
     fs::{self, Metadata},
     io::{self, ErrorKind},
+    mem,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
@@ -41,15 +42,11 @@ impl DestinationTransaction {
         }
         match fs::create_dir(transaction.destination.path()) {
             Ok(()) => {
-                transaction.owned_destination = Some(OwnedDirectory::unverified(
-                    transaction.destination.path().to_owned(),
-                ));
-                if let Err(source) = transaction
-                    .owned_destination
-                    .as_mut()
-                    .expect("destination ownership was just recorded")
-                    .verify()
-                {
+                let mut owned_destination =
+                    OwnedDirectory::unverified(transaction.destination.path().to_owned());
+                let verification = owned_destination.verify();
+                transaction.owned_destination = Some(owned_destination);
+                if let Err(source) = verification {
                     let path = transaction.destination.path().to_owned();
                     return Err(
                         transaction.failure(DestinationError::InspectCreated { path, source })
@@ -93,14 +90,10 @@ impl DestinationTransaction {
         for parent in self.destination.parent_candidates() {
             match fs::create_dir(parent) {
                 Ok(()) => {
-                    self.created_parents
-                        .push(OwnedDirectory::unverified(parent.clone()));
-                    if let Err(source) = self
-                        .created_parents
-                        .last_mut()
-                        .expect("created parent ownership was just recorded")
-                        .verify()
-                    {
+                    let mut created_parent = OwnedDirectory::unverified(parent.clone());
+                    let verification = created_parent.verify();
+                    self.created_parents.push(created_parent);
+                    if let Err(source) = verification {
                         return Err(DestinationError::InspectCreated {
                             path: parent.clone(),
                             source,
@@ -175,12 +168,9 @@ impl DestinationTransaction {
             }
         }
 
-        if issues.is_empty() {
-            Ok(())
-        } else {
-            let issues = NonEmptyVec::try_from(issues)
-                .expect("cleanup errors are only constructed from a non-empty list");
-            Err(CleanupError { issues })
+        match NonEmptyVec::try_from(issues) {
+            Ok(issues) => Err(CleanupError { issues }),
+            Err(_empty) => Ok(()),
         }
     }
 }
@@ -188,7 +178,7 @@ impl DestinationTransaction {
 impl Drop for DestinationTransaction {
     fn drop(&mut self) {
         if self.active {
-            let _ = self.cleanup();
+            mem::drop(self.cleanup());
         }
     }
 }
