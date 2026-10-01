@@ -33,7 +33,7 @@ impl From<GlobalArgs> for GlobalOptions {
 }
 
 #[derive(Debug, Parser)]
-#[command(about, author, version)]
+#[command(name = "sm", about, author, version)]
 struct Cli {
     #[command(flatten)]
     global: GlobalArgs,
