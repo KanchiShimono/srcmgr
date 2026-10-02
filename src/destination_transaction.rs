@@ -1,13 +1,19 @@
-use crate::{clone_destination::CloneDestination, non_empty_vec::NonEmptyVec};
-use std::{
-    error,
-    fmt::{self, Display, Formatter},
-    fs::{self, Metadata},
-    io::{self, ErrorKind},
-    mem,
-    path::{Path, PathBuf},
-};
+use std::error;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
+use std::fs::Metadata;
+use std::fs::{self};
+use std::io::ErrorKind;
+use std::io::{self};
+use std::mem;
+use std::path::Path;
+use std::path::PathBuf;
+
 use thiserror::Error;
+
+use crate::clone_destination::CloneDestination;
+use crate::non_empty_vec::NonEmptyVec;
 
 pub(crate) struct DestinationTransaction {
     destination: CloneDestination,
@@ -456,14 +462,16 @@ impl error::Error for CleanupError {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::Path;
+
     use super::DestinationTransaction;
-    use crate::{
-        canonical_dir::CanonicalDir,
-        clone_destination::{CloneDestination, ExplicitDestination, ManagedDestination},
-        path_expansion::HomeDirectory,
-        remote_repository::RemoteRepository,
-    };
-    use std::{fs, path::Path};
+    use crate::canonical_dir::CanonicalDir;
+    use crate::clone_destination::CloneDestination;
+    use crate::clone_destination::ExplicitDestination;
+    use crate::clone_destination::ManagedDestination;
+    use crate::path_expansion::HomeDirectory;
+    use crate::remote_repository::RemoteRepository;
 
     fn explicit_destination(path: &Path) -> CloneDestination {
         let home = HomeDirectory::from_path("unused-home");

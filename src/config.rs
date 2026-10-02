@@ -1,16 +1,22 @@
-use crate::{
-    canonical_dir::{CanonicalDir, CanonicalDirError},
-    non_empty_vec::NonEmptyVec,
-    path_expansion::{self, HomeDirectory, HomeDirectoryError, PathExpansionError},
-};
-use gix::config::{self, File, Source, file::init::from_paths::Error};
+use std::collections::HashSet;
 #[cfg(test)]
 use std::path;
-use std::{
-    collections::HashSet,
-    str::{self, Utf8Error},
-};
+use std::str::Utf8Error;
+use std::str::{self};
+
+use gix::config::File;
+use gix::config::Source;
+use gix::config::file::init::from_paths::Error;
+use gix::config::{self};
 use thiserror::Error;
+
+use crate::canonical_dir::CanonicalDir;
+use crate::canonical_dir::CanonicalDirError;
+use crate::non_empty_vec::NonEmptyVec;
+use crate::path_expansion::HomeDirectory;
+use crate::path_expansion::HomeDirectoryError;
+use crate::path_expansion::PathExpansionError;
+use crate::path_expansion::{self};
 
 #[derive(Debug)]
 pub(crate) struct Config {
@@ -87,13 +93,16 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, ConfigError};
+    use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    use gix::bstr::ByteSlice;
+    use gix::config::File;
+
+    use super::Config;
+    use super::ConfigError;
     use crate::canonical_dir::CanonicalDirError;
-    use gix::{bstr::ByteSlice, config::File};
-    use std::{
-        fs,
-        path::{Path, PathBuf},
-    };
 
     fn root_paths(config: &Config) -> Vec<PathBuf> {
         config

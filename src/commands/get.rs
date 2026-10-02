@@ -1,18 +1,24 @@
-use crate::{
-    clone_destination::{
-        CloneDestination, DestinationParseError, ExplicitDestination, ManagedDestination,
-    },
-    config::{Config, ConfigError},
-    destination_transaction::{CleanupError, DestinationTransaction, DestinationTransactionError},
-    git_clone::{self, CloneError},
-    global_options::GlobalOptions,
-    path_expansion::HomeDirectory,
-    progress::{ConsoleProgress, ProgressDetail},
-    remote_repository::{RemoteRepository, RepositoryError},
-};
 use clap::Args;
 use gix::Url;
 use thiserror::Error;
+
+use crate::clone_destination::CloneDestination;
+use crate::clone_destination::DestinationParseError;
+use crate::clone_destination::ExplicitDestination;
+use crate::clone_destination::ManagedDestination;
+use crate::config::Config;
+use crate::config::ConfigError;
+use crate::destination_transaction::CleanupError;
+use crate::destination_transaction::DestinationTransaction;
+use crate::destination_transaction::DestinationTransactionError;
+use crate::git_clone::CloneError;
+use crate::git_clone::{self};
+use crate::global_options::GlobalOptions;
+use crate::path_expansion::HomeDirectory;
+use crate::progress::ConsoleProgress;
+use crate::progress::ProgressDetail;
+use crate::remote_repository::RemoteRepository;
+use crate::remote_repository::RepositoryError;
 
 #[derive(Debug, Args)]
 pub(crate) struct GetArgs {
@@ -116,16 +122,18 @@ enum GetError {
 
 #[cfg(test)]
 mod tests {
-    use super::{ClonePlan, GetArgs};
-    use crate::{
-        clone_destination::CloneDestination, config::Config, path_expansion::HomeDirectory,
-        progress::ProgressDetail,
-    };
+    use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
+
     use clap::Parser;
-    use std::{
-        fs,
-        path::{Path, PathBuf},
-    };
+
+    use super::ClonePlan;
+    use super::GetArgs;
+    use crate::clone_destination::CloneDestination;
+    use crate::config::Config;
+    use crate::path_expansion::HomeDirectory;
+    use crate::progress::ProgressDetail;
 
     #[derive(Parser)]
     struct Options {

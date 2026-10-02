@@ -1,9 +1,11 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    fs,
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
+use std::fs;
+use std::io::Error;
+use std::path::Path;
+use std::path::PathBuf;
+
 use thiserror::Error;
 
 /// A path that referred to an existing directory when it was canonicalized.
@@ -93,8 +95,11 @@ impl Display for CanonicalizedPath<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CanonicalDir, CanonicalDirError};
-    use std::{fs, path::PathBuf};
+    use std::fs;
+    use std::path::PathBuf;
+
+    use super::CanonicalDir;
+    use super::CanonicalDirError;
 
     #[test]
     fn canonicalizes_directories_and_converts_back_to_path_buf() {

@@ -1,14 +1,15 @@
-use std::{io, sync::Arc, time::Duration};
+use std::io;
+use std::sync::Arc;
+use std::time::Duration;
 
-use prodash::{
-    Progress,
-    progress::{DoOrDiscard, key::Level},
-    render::{
-        self,
-        line::{Options, StreamKind},
-    },
-    tree::{Item, Root},
-};
+use prodash::Progress;
+use prodash::progress::DoOrDiscard;
+use prodash::progress::key::Level;
+use prodash::render::line::Options;
+use prodash::render::line::StreamKind;
+use prodash::render::{self};
+use prodash::tree::Item;
+use prodash::tree::Root;
 
 const NORMAL_MAX_LEVEL: Level = 2;
 const INITIAL_DELAY: Duration = Duration::from_millis(150);
@@ -106,9 +107,15 @@ impl ConsoleProgress {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConsoleProgress, INITIAL_DELAY, ProgressDetail, RendererPlan};
-    use prodash::{NestedProgress, render::line::Options};
     use std::sync::Arc;
+
+    use prodash::NestedProgress;
+    use prodash::render::line::Options;
+
+    use super::ConsoleProgress;
+    use super::INITIAL_DELAY;
+    use super::ProgressDetail;
+    use super::RendererPlan;
 
     fn options(output_is_terminal: bool) -> Options {
         Options {
