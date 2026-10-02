@@ -1,14 +1,16 @@
-use crate::{
-    canonical_dir::CanonicalDir,
-    path_expansion::{self, HomeDirectory, PathExpansionError},
-    remote_repository::RemoteRepository,
-};
-use gix::{bstr::BStr, config};
-use std::{
-    borrow::Cow,
-    path::{self, PathBuf},
-};
+use std::borrow::Cow;
+use std::path::PathBuf;
+use std::path::{self};
+
+use gix::bstr::BStr;
+use gix::config;
 use thiserror::Error;
+
+use crate::canonical_dir::CanonicalDir;
+use crate::path_expansion::HomeDirectory;
+use crate::path_expansion::PathExpansionError;
+use crate::path_expansion::{self};
+use crate::remote_repository::RemoteRepository;
 
 #[derive(Debug)]
 pub(crate) enum CloneDestination {
@@ -119,12 +121,16 @@ pub(crate) enum DestinationParseError {
 
 #[cfg(test)]
 mod tests {
-    use super::{CloneDestination, DestinationParseError, ExplicitDestination, ManagedDestination};
-    use crate::{
-        canonical_dir::CanonicalDir, path_expansion::HomeDirectory,
-        remote_repository::RemoteRepository,
-    };
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    use super::CloneDestination;
+    use super::DestinationParseError;
+    use super::ExplicitDestination;
+    use super::ManagedDestination;
+    use crate::canonical_dir::CanonicalDir;
+    use crate::path_expansion::HomeDirectory;
+    use crate::remote_repository::RemoteRepository;
 
     #[test]
     fn managed_destination_preserves_its_root_and_uses_repository_components() {

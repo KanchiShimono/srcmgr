@@ -1,19 +1,22 @@
-use crate::{
-    canonical_dir::CanonicalDir,
-    config::{Config, ConfigError},
-    global_options::GlobalOptions,
-    non_empty_vec::NonEmptyVec,
-    path_expansion::HomeDirectory,
-};
+use std::fs;
+use std::io::ErrorKind;
+use std::io::Write;
+use std::io::{self};
+use std::path::Path;
+use std::path::PathBuf;
+use std::path::StripPrefixError;
+
 use clap::Args;
 use gix::discover::path;
-use std::{
-    fs,
-    io::{self, ErrorKind, Write},
-    path::{Path, PathBuf, StripPrefixError},
-};
 use thiserror::Error;
 use walkdir::WalkDir;
+
+use crate::canonical_dir::CanonicalDir;
+use crate::config::Config;
+use crate::config::ConfigError;
+use crate::global_options::GlobalOptions;
+use crate::non_empty_vec::NonEmptyVec;
+use crate::path_expansion::HomeDirectory;
 
 #[derive(Debug, Args)]
 pub(crate) struct ListArgs {
@@ -309,16 +312,25 @@ enum GitRepositoryError {
 
 #[cfg(test)]
 mod tests {
-    use super::{GitRepositoryError, ListArgs, ListDiagnostic, ListError, RelativePathError};
-    use crate::{canonical_dir::CanonicalDir, non_empty_vec::NonEmptyVec};
+    use std::convert::Infallible;
+    use std::fs;
+    use std::io::Error;
+    use std::io::ErrorKind;
+    use std::io::Write;
+    use std::io::{self};
+    use std::path::Path;
+    use std::path::PathBuf;
+    use std::slice;
+
     use clap::Parser;
-    use std::{
-        convert::Infallible,
-        fs,
-        io::{self, Error, ErrorKind, Write},
-        path::{Path, PathBuf},
-        slice,
-    };
+
+    use super::GitRepositoryError;
+    use super::ListArgs;
+    use super::ListDiagnostic;
+    use super::ListError;
+    use super::RelativePathError;
+    use crate::canonical_dir::CanonicalDir;
+    use crate::non_empty_vec::NonEmptyVec;
 
     const DEFAULT: ListArgs = ListArgs {
         relative: false,

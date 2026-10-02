@@ -1,8 +1,9 @@
-use std::{
-    iter::{self, Chain, Once},
-    slice::Iter,
-    vec::IntoIter,
-};
+use std::iter::Chain;
+use std::iter::Once;
+use std::iter::{self};
+use std::slice::Iter;
+use std::vec::IntoIter;
+
 use thiserror::Error;
 
 /// A vector with at least one element.
@@ -63,7 +64,8 @@ pub(crate) struct EmptyVecError;
 
 #[cfg(test)]
 mod tests {
-    use super::{EmptyVecError, NonEmptyVec};
+    use super::EmptyVecError;
+    use super::NonEmptyVec;
 
     #[test]
     fn rejects_empty_vectors() {

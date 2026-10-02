@@ -1,16 +1,16 @@
-use std::{
-    error::Error,
-    fmt::{self, Display, Formatter},
-    path::Path,
-    sync::atomic::AtomicBool,
-};
+use std::error::Error;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
+use std::path::Path;
+use std::sync::atomic::AtomicBool;
 
-use gix::{
-    NestedProgress, Url,
-    clone::PrepareFetch,
-    create::{self, Kind},
-    open,
-};
+use gix::NestedProgress;
+use gix::Url;
+use gix::clone::PrepareFetch;
+use gix::create::Kind;
+use gix::create::{self};
+use gix::open;
 use thiserror::Error;
 
 pub(crate) fn clone_repository<P>(

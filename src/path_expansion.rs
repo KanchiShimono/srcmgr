@@ -1,11 +1,11 @@
-use gix::{
-    config::{
-        self,
-        path::interpolate::{self, Context, Error},
-    },
-    path::env,
-};
-use std::path::{self, PathBuf};
+use std::path::PathBuf;
+use std::path::{self};
+
+use gix::config::path::interpolate::Context;
+use gix::config::path::interpolate::Error;
+use gix::config::path::interpolate::{self};
+use gix::config::{self};
+use gix::path::env;
 use thiserror::Error;
 
 type HomeForUser = fn(&str) -> Option<PathBuf>;
@@ -65,12 +65,15 @@ pub(crate) struct PathExpansionError(#[source] Error);
 
 #[cfg(test)]
 mod tests {
-    use super::{HomeDirectory, PathExpansionError};
-    use gix::{
-        bstr::BStr,
-        config::{self, path::interpolate::Error},
-    };
-    use std::path::{self, PathBuf};
+    use std::path::PathBuf;
+    use std::path::{self};
+
+    use gix::bstr::BStr;
+    use gix::config::path::interpolate::Error;
+    use gix::config::{self};
+
+    use super::HomeDirectory;
+    use super::PathExpansionError;
 
     fn home_directory() -> HomeDirectory {
         HomeDirectory::from_path("current-home")
@@ -235,7 +238,8 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn non_utf8_path_bytes_are_preserved_during_home_expansion() {
-        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
 
         let home = home_directory();
         let input = config::Path::from(BStr::new(b"~/\xff"));

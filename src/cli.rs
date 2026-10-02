@@ -1,22 +1,26 @@
 #[cfg(unix)]
 use std::io::ErrorKind;
-use std::io::{self, Write};
+use std::io::Write;
+use std::io::{self};
 
-use anyhow::{Context, Result};
-use clap::{Args, Command, CommandFactory, Parser, Subcommand};
+use anyhow::Context;
+use anyhow::Result;
+use clap::Args;
+use clap::Command;
+use clap::CommandFactory;
+use clap::Parser;
+use clap::Subcommand;
 use clap_complete::Shell;
 #[cfg(unix)]
 use signal_hook::consts::SIGPIPE;
 #[cfg(unix)]
 use signal_hook::low_level;
 
-use crate::{
-    commands::{
-        get::{self, GetArgs},
-        list::{self, ListArgs},
-    },
-    global_options::GlobalOptions,
-};
+use crate::commands::get::GetArgs;
+use crate::commands::get::{self};
+use crate::commands::list::ListArgs;
+use crate::commands::list::{self};
+use crate::global_options::GlobalOptions;
 
 #[derive(Debug, Args)]
 struct GlobalArgs {
@@ -122,18 +126,26 @@ fn terminate_with_sigpipe() -> Result<()> {
 mod tests {
     #[cfg(unix)]
     use std::env;
-    use std::io::{self, Error, ErrorKind, Write};
+    use std::io::Error;
+    use std::io::ErrorKind;
+    use std::io::Write;
+    use std::io::{self};
     #[cfg(unix)]
     use std::os::unix::process::ExitStatusExt;
     #[cfg(unix)]
     use std::process::Command;
 
-    use super::{Cli, Commands, CompletionArgs};
-    use crate::{global_options::GlobalOptions, progress::ProgressDetail};
-    use clap::{CommandFactory, Parser};
+    use clap::CommandFactory;
+    use clap::Parser;
     use clap_complete::Shell;
     #[cfg(unix)]
     use signal_hook::consts::SIGPIPE;
+
+    use super::Cli;
+    use super::Commands;
+    use super::CompletionArgs;
+    use crate::global_options::GlobalOptions;
+    use crate::progress::ProgressDetail;
 
     struct FailingWriter(ErrorKind);
 

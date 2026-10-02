@@ -1,15 +1,16 @@
-use crate::non_empty_vec::NonEmptyVec;
-use gix::{
-    Url,
-    bstr::{BStr, BString},
-    path,
-    url::{Scheme, parse::Error},
-};
-use std::{
-    iter,
-    path::{Component, PathBuf},
-};
+use std::iter;
+use std::path::Component;
+use std::path::PathBuf;
+
+use gix::Url;
+use gix::bstr::BStr;
+use gix::bstr::BString;
+use gix::path;
+use gix::url::Scheme;
+use gix::url::parse::Error;
 use thiserror::Error;
+
+use crate::non_empty_vec::NonEmptyVec;
 
 #[derive(Debug)]
 pub(crate) struct RemoteRepository {
@@ -317,8 +318,10 @@ pub(crate) enum PathComponentError {
 
 #[cfg(test)]
 mod tests {
-    use super::{RemoteRepository, RepositoryError};
     use std::path::PathBuf;
+
+    use super::RemoteRepository;
+    use super::RepositoryError;
 
     fn assert_repository(
         input: &str,
